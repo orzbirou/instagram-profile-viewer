@@ -1,0 +1,13 @@
+@if (isOpen()) {
+  <div>
+    @if (results() === undefined || results().length === 0) {
+      <div>No results</div>
+    } @else {
+      @for (result of results(); track result) {
+        <div (click)="onSelect(result)">
+          {{ result }}
+        </div>
+      }
+    }
+  </div>
+}

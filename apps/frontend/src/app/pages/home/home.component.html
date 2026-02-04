@@ -1,0 +1,28 @@
+<div>
+  <h2>Home Page</h2>
+  <p>Instagram Profile Viewer - Home</p>
+  
+  <div style="margin-top: 20px; position: relative; max-width: 400px;">
+    <app-search-input 
+      [value]="searchTerm()" 
+      (valueChange)="onSearchTermChange($event)"
+    />
+    
+    <app-search-results-dropdown 
+      [isOpen]="isDropdownOpen()" 
+      [results]="searchResults()!"
+      (select)="onSelectUsername($event)"
+    />
+    
+    @if (searchError()) {
+      <p class="error">{{ searchError() }}</p>
+    }
+  </div>
+  
+  <div style="margin-top: 40px;">
+    <button (click)="checkBackend()">Check backend</button>
+    @if (statusMessage) {
+      <p>{{ statusMessage }}</p>
+    }
+  </div>
+</div>

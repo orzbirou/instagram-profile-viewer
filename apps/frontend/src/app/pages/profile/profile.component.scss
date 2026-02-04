@@ -1,0 +1,193 @@
+.profile-container {
+  max-width: 935px;
+  margin: 0 auto;
+  padding: 30px 20px;
+
+  ::ng-deep app-profile-header {
+    display: block;
+    margin-bottom: 44px;
+  }
+
+  ::ng-deep .profile-header {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+  }
+
+  ::ng-deep .profile-picture {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+
+  ::ng-deep .profile-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  ::ng-deep .username-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  ::ng-deep .username {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  ::ng-deep .stats-row {
+    display: flex;
+    gap: 40px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+
+    li {
+      font-size: 16px;
+
+      strong {
+        font-weight: 600;
+      }
+    }
+  }
+
+  ::ng-deep .profile-details {
+    font-size: 14px;
+
+    .full-name {
+      margin: 0 0 4px 0;
+      font-weight: 600;
+      color: #262626;
+    }
+
+    .bio {
+      margin: 0;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      color: #262626;
+    }
+  }
+
+  // Tabs
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 60px;
+    border-top: 1px solid #dbdbdb;
+    margin-top: 44px;
+
+    .tab {
+      padding: 14px 0;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #8e8e8e;
+      cursor: pointer;
+      position: relative;
+
+      &.active {
+        color: #262626;
+
+        &::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: #262626;
+        }
+      }
+    }
+  }
+
+  // Grid
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-top: 20px;
+    width: 100%;
+
+    .grid-item {
+      aspect-ratio: 1;
+      background: #fafafa;
+      border: 1px solid #dbdbdb;
+    }
+  }
+}
+
+.loading,
+.error {
+  max-width: 935px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  font-size: 14px;
+}
+
+.error {
+  color: #ed4956;
+}
+
+// Responsive
+@media (max-width: 735px) {
+  .profile-container {
+    ::ng-deep .profile-header {
+      gap: 20px;
+    }
+
+    ::ng-deep .profile-picture {
+      width: 90px;
+      height: 90px;
+    }
+
+    ::ng-deep .username {
+      font-size: 18px;
+    }
+
+    ::ng-deep .stats-row {
+      gap: 20px;
+
+      li {
+        font-size: 14px;
+      }
+    }
+
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-container {
+    padding: 16px;
+
+    ::ng-deep .profile-header {
+      gap: 16px;
+    }
+
+    ::ng-deep .profile-picture {
+      width: 77px;
+      height: 77px;
+    }
+
+    ::ng-deep .username-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    ::ng-deep .stats-row {
+      gap: 16px;
+    }
+  }
+}

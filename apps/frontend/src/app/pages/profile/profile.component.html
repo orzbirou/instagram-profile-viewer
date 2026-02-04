@@ -1,0 +1,31 @@
+@if (loading()) {
+  <div class="loading">
+    Loading profile...
+  </div>
+} @else if (error()) {
+  <div class="error">
+    {{ error() }}
+  </div>
+} @else if (profile()) {
+  <div class="profile-container">
+    <app-profile-header [profile]="profile()!" />
+    
+    <div class="tabs">
+      <div class="tab active">Posts</div>
+      <div class="tab">Reels</div>
+      <div class="tab">Tagged</div>
+    </div>
+    
+    <div class="grid">
+      <div class="grid-item"></div>
+      <div class="grid-item"></div>
+      <div class="grid-item"></div>
+      <div class="grid-item"></div>
+      <div class="grid-item"></div>
+      <div class="grid-item"></div>
+      <div class="grid-item"></div>
+      <div class="grid-item"></div>
+      <div class="grid-item"></div>
+    </div>
+  </div>
+}
