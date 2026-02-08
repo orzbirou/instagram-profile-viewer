@@ -5,6 +5,18 @@ import { catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import type { ApiError } from './api-error';
 
+export interface SearchUserResult {
+  username: string;
+  fullName?: string;
+  profilePicUrl?: string;
+  isVerified?: boolean;
+  followersCount?: number;
+}
+
+export interface SearchResponse {
+  users: SearchUserResult[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -13,9 +25,9 @@ export class SearchApiService {
 
   constructor(private readonly http: HttpClient) {}
 
-  search(query: string): Observable<string[]> {
+  search(query: string): Observable<SearchResponse> {
     return this.http
-      .get<string[]>(`${this.apiBaseUrl}/search`, {
+      .get<SearchResponse>(`${this.apiBaseUrl}/search`, {
         params: { query },
       })
       .pipe(

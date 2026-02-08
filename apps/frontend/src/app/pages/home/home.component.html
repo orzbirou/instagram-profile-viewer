@@ -1,28 +1,34 @@
-<div>
-  <h2>Home Page</h2>
-  <p>Instagram Profile Viewer - Home</p>
-  
-  <div style="margin-top: 20px; position: relative; max-width: 400px;">
-    <app-search-input 
-      [value]="searchTerm()" 
-      (valueChange)="onSearchTermChange($event)"
-    />
+<div class="home-container">
+  <div class="home-content">
+    <div class="header">
+      <h1 class="title">Instagram Profile Viewer</h1>
+      <p class="subtitle">Search for Instagram profiles or explore hashtags</p>
+    </div>
     
-    <app-search-results-dropdown 
-      [isOpen]="isDropdownOpen()" 
-      [results]="searchResults()!"
-      (select)="onSelectUsername($event)"
-    />
-    
-    @if (searchError()) {
-      <p class="error">{{ searchError() }}</p>
-    }
-  </div>
-  
-  <div style="margin-top: 40px;">
-    <button (click)="checkBackend()">Check backend</button>
-    @if (statusMessage) {
-      <p>{{ statusMessage }}</p>
-    }
+    <div class="search-wrapper">
+      <app-search-input 
+        [value]="searchTerm()" 
+        (valueChange)="onSearchTermChange($event)"
+      />
+      
+      <app-search-results-dropdown 
+        [isOpen]="searchTerm().trim().length >= 2" 
+        [results]="searchResults()"
+        [isLoading]="isLoading()"
+        [error]="searchError()"
+        (select)="onSelectUsername($event)"
+        (close)="onCloseDropdown()"
+      />
+    </div>
+
+    <div class="explore-link">
+      <a routerLink="/explore" class="explore-button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        Explore by Hashtag
+      </a>
+    </div>
   </div>
 </div>

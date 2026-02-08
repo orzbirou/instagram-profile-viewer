@@ -85,6 +85,11 @@
 
     .tab {
       padding: 14px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
       font-size: 12px;
       font-weight: 600;
       letter-spacing: 1px;
@@ -92,9 +97,18 @@
       color: #8e8e8e;
       cursor: pointer;
       position: relative;
+      transition: color 0.15s ease;
+
+      &:hover:not(.active) {
+        color: #262626;
+      }
 
       &.active {
         color: #262626;
+
+        .tab-icon {
+          color: #262626;
+        }
 
         &::after {
           content: '';
@@ -106,21 +120,16 @@
           background: #262626;
         }
       }
-    }
-  }
 
-  // Grid
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
-    margin-top: 20px;
-    width: 100%;
+      .tab-icon {
+        width: 12px;
+        height: 12px;
+        color: inherit;
+      }
 
-    .grid-item {
-      aspect-ratio: 1;
-      background: #fafafa;
-      border: 1px solid #dbdbdb;
+      .tab-label {
+        line-height: 1;
+      }
     }
   }
 }
@@ -161,8 +170,18 @@
       }
     }
 
-    .grid {
-      grid-template-columns: repeat(2, 1fr);
+    .tabs {
+      gap: 40px;
+
+      .tab {
+        font-size: 11px;
+        gap: 4px;
+
+        .tab-icon {
+          width: 11px;
+          height: 11px;
+        }
+      }
     }
   }
 }
@@ -188,6 +207,25 @@
 
     ::ng-deep .stats-row {
       gap: 16px;
+    }
+
+    .tabs {
+      gap: 30px;
+
+      .tab {
+        font-size: 10px;
+        padding: 12px 0;
+        gap: 3px;
+
+        .tab-icon {
+          width: 10px;
+          height: 10px;
+        }
+
+        .tab-label {
+          display: none; // Icon only on very small screens
+        }
+      }
     }
   }
 }

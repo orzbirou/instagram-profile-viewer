@@ -1,0 +1,89 @@
+<div class="explore-container">
+  <div class="search-section">
+    <h1 class="title">Explore by Hashtag</h1>
+    
+    <div class="search-form">
+      <div class="input-group">
+        <span class="hashtag-symbol">#</span>
+        <input
+          type="text"
+          class="hashtag-input"
+          [(ngModel)]="hashtag"
+          (keydown.enter)="onSearch()"
+          placeholder="Enter hashtag (e.g., travel, food)"
+          [disabled]="isLoading()"
+        />
+      </div>
+      
+      <div class="feed-type-selector">
+        <button
+          type="button"
+          class="feed-type-btn"
+          [class.active]="feedType() === 'recent'"
+          (click)="onFeedTypeChange('recent')"
+          [disabled]="isLoading()">
+          Recent
+        </button>
+        <button
+          type="button"
+          class="feed-type-btn"
+          [class.active]="feedType() === 'top'"
+          (click)="onFeedTypeChange('top')"
+          [disabled]="isLoading()">
+          Top
+        </button>
+      </div>
+      
+      <button
+        type="button"
+        class="search-btn"
+        (click)="onSearch()"
+        [disabled]="isLoading() || !hashtag().trim()">
+        Search
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="error-state">
+      <p class="error-message">{{ error() }}</p>
+      <button class="retry-btn" (click)="onSearch()">Try Again</button>
+    </div>
+  } @else if (isLoading() && items().length === 0) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading posts...</p>
+    </div>
+  } @else if (items().length > 0) {
+    <app-explore-grid
+      [items]="items()"
+      (itemClick)="onItemClick($event)"
+    />
+    
+    <!-- Infinite scroll sentinel -->
+    <div class="scroll-sentinel"></div>
+    
+    @if (isLoadingMore()) {
+      <div class="loading-more">
+        <div class="spinner-small"></div>
+        <span>Loading more...</span>
+      </div>
+    }
+  } @else if (hashtag().trim()) {
+    <div class="empty-state">
+      <svg class="empty-icon" width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="48" cy="48" r="44" stroke="#DBDBDB" stroke-width="4"/>
+        <path d="M48 28v40M28 48h40" stroke="#DBDBDB" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+      <p class="empty-message">No posts found for #{{ hashtag() }}</p>
+      <p class="empty-hint">Try a different hashtag</p>
+    </div>
+  }
+</div>
+
+@if (modalOpen()) {
+  <app-post-modal
+    [item]="selectedItem()!"
+    (close)="onCloseModal()"
+  />
+}

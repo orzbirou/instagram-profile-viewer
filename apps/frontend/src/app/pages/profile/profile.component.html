@@ -10,22 +10,61 @@
   <div class="profile-container">
     <app-profile-header [profile]="profile()!" />
     
+    <!-- Highlights section -->
+    <app-profile-highlights
+      [highlights]="highlights()"
+      [isLoading]="highlightsLoading()"
+      [error]="highlightsError()"
+      (retry)="retryHighlights()"
+    />
+    
     <div class="tabs">
-      <div class="tab active">Posts</div>
-      <div class="tab">Reels</div>
-      <div class="tab">Tagged</div>
+      <button 
+        class="tab" 
+        [class.active]="activeTab() === 'posts'"
+        (click)="switchTab('posts')"
+        type="button"
+        aria-label="Posts">
+        <svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="3" width="7" height="7"/>
+          <rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/>
+        </svg>
+        <span class="tab-label">Posts</span>
+      </button>
+      
+      <button 
+        class="tab" 
+        [class.active]="activeTab() === 'reels'"
+        (click)="switchTab('reels')"
+        type="button"
+        aria-label="Reels">
+        <svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2.5 5.5A1.5 1.5 0 014 4h16a1.5 1.5 0 011.5 1.5v13a1.5 1.5 0 01-1.5 1.5H4a1.5 1.5 0 01-1.5-1.5v-13zm2 0v13H20v-13H4.5z"/>
+          <path d="M9.5 8.5l6 4-6 4v-8z"/>
+        </svg>
+        <span class="tab-label">Reels</span>
+      </button>
+      
+      <button 
+        class="tab" 
+        [class.active]="activeTab() === 'tagged'"
+        (click)="switchTab('tagged')"
+        type="button"
+        aria-label="Tagged">
+        <svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10.5 8.5a2 2 0 114 0 2 2 0 01-4 0z"/>
+          <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 1v14h14V5H5z"/>
+          <path d="M12.5 13.5a3 3 0 00-3 3v2h6v-2a3 3 0 00-3-3z"/>
+        </svg>
+        <span class="tab-label">Tagged</span>
+      </button>
     </div>
     
-    <div class="grid">
-      <div class="grid-item"></div>
-      <div class="grid-item"></div>
-      <div class="grid-item"></div>
-      <div class="grid-item"></div>
-      <div class="grid-item"></div>
-      <div class="grid-item"></div>
-      <div class="grid-item"></div>
-      <div class="grid-item"></div>
-      <div class="grid-item"></div>
-    </div>
+    <app-profile-posts-grid
+      [posts]="activeGridItems()"
+      [isLoading]="activeGridLoading()"
+    />
   </div>
 }

@@ -1,0 +1,303 @@
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-container {
+  position: relative;
+  max-width: 1200px;
+  width: 100%;
+  max-height: 90vh;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.8);
+  }
+}
+
+.modal-content {
+  display: flex;
+  height: 90vh;
+  max-height: 800px;
+}
+
+.media-section {
+  flex: 1.5;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.media-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-image,
+.media-video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+  z-index: 5;
+
+  &:hover {
+    background: white;
+  }
+
+  &.prev-btn {
+    left: 16px;
+  }
+
+  &.next-btn {
+    right: 16px;
+  }
+}
+
+.carousel-dots {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    transition: background 0.15s ease;
+
+    &.active {
+      background: white;
+    }
+  }
+}
+
+.details-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  overflow-y: auto;
+}
+
+.user-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #efefef;
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .user-info {
+    flex: 1;
+  }
+
+  .username-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .username {
+    font-weight: 600;
+    font-size: 14px;
+    color: #262626;
+  }
+
+  .verified-badge {
+    flex-shrink: 0;
+  }
+
+  .full-name {
+    font-size: 12px;
+    color: #8e8e8e;
+    margin-top: 2px;
+  }
+}
+
+.caption-section {
+  padding: 16px;
+  border-bottom: 1px solid #efefef;
+  line-height: 1.5;
+
+  .caption-username {
+    font-weight: 600;
+    margin-right: 6px;
+    color: #262626;
+  }
+
+  .caption-text {
+    color: #262626;
+  }
+}
+
+.stats-section {
+  padding: 16px;
+  margin-top: auto;
+  border-top: 1px solid #efefef;
+
+  .stats-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #262626;
+
+    .stat-icon {
+      flex-shrink: 0;
+    }
+
+    .stat-count {
+      font-weight: 600;
+    }
+  }
+
+  .timestamp {
+    font-size: 12px;
+    color: #8e8e8e;
+    text-transform: uppercase;
+  }
+}
+
+// Responsive
+@media (max-width: 935px) {
+  .modal-content {
+    flex-direction: column;
+    height: auto;
+    max-height: 90vh;
+  }
+
+  .media-section {
+    flex: none;
+    height: 50vh;
+    min-height: 300px;
+  }
+
+  .details-section {
+    flex: 1;
+    min-height: 200px;
+  }
+
+  .close-btn {
+    background: rgba(0, 0, 0, 0.8);
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-backdrop {
+    padding: 0;
+  }
+
+  .modal-container {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .modal-content {
+    height: 100vh;
+    max-height: 100vh;
+  }
+
+  .carousel-btn {
+    width: 32px;
+    height: 32px;
+
+    &.prev-btn {
+      left: 8px;
+    }
+
+    &.next-btn {
+      right: 8px;
+    }
+  }
+}

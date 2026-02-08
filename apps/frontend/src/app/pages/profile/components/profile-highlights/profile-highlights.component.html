@@ -1,0 +1,53 @@
+<!-- Highlights section (Instagram-like story highlights) -->
+<div class="highlights-section">
+  @if (isLoading()) {
+    <!-- Loading skeleton -->
+    <div class="highlights-container" role="status" aria-label="Loading highlights">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="highlight-item skeleton">
+          <div class="highlight-circle skeleton-circle"></div>
+          <div class="highlight-title skeleton-text"></div>
+        </div>
+      }
+    </div>
+  } @else if (error()) {
+    <!-- Error state -->
+    <div class="highlights-error" role="alert">
+      <span>{{ error() }}</span>
+      <button class="retry-button" (click)="onRetry()" aria-label="Retry loading highlights">
+        Retry
+      </button>
+    </div>
+  } @else if (highlights().length === 0) {
+    <!-- Empty state: show nothing for cleaner UI -->
+  } @else {
+    <!-- Highlights list -->
+    <div class="highlights-container">
+      @for (highlight of highlights(); track trackById($index, highlight)) {
+        <div class="highlight-item" [attr.data-id]="highlight.id">
+          <div class="highlight-circle" [attr.aria-label]="highlight.title + ', ' + highlight.itemsCount + ' items'">
+            @if (highlight.coverUrl) {
+              <img 
+                [src]="highlight.coverUrl" 
+                [alt]="highlight.title"
+                class="highlight-image"
+                loading="lazy"
+              />
+            } @else {
+              <!-- Placeholder -->
+              <div class="highlight-placeholder">
+                <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="28" cy="28" r="28" fill="#DBDBDB"/>
+                  <path d="M28 20C24 20 20.5 23.5 20.5 27.5C20.5 31.5 24 35 28 35C32 35 35.5 31.5 35.5 27.5C35.5 23.5 32 20 28 20Z" fill="#FFFFFF"/>
+                  <circle cx="28" cy="26" r="5" fill="#DBDBDB"/>
+                  <path d="M28 29L28 38" stroke="#DBDBDB" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+              </div>
+            }
+          </div>
+          <div class="highlight-title">{{ highlight.title }}</div>
+        </div>
+      }
+    </div>
+  }
+</div>

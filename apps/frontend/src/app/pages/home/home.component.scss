@@ -1,5 +1,90 @@
-// Home component styles
+// Instagram-like home page
 
-.error {
-  margin-top: 8px;
+.home-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  padding: 20px;
+}
+
+.home-content {
+  width: 100%;
+  max-width: 450px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+  
+  .title {
+    font-size: 32px;
+    font-weight: 300;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #262626;
+    margin: 0 0 8px 0;
+  }
+  
+  .subtitle {
+    font-size: 16px;
+    color: #8e8e8e;
+    margin: 0;
+  }
+}
+
+.search-wrapper {
+  position: relative;
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.explore-link {
+  margin-top: 24px;
+  text-align: center;
+  
+  .explore-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #0095f6;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.2s;
+    
+    svg {
+      flex-shrink: 0;
+    }
+    
+    &:hover {
+      background: #0081d4;
+    }
+    
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 480px) {
+  .header {
+    .title {
+      font-size: 24px;
+    }
+    
+    .subtitle {
+      font-size: 14px;
+    }
+  }
+  
+  .search-wrapper {
+    padding: 16px;
+  }
 }
