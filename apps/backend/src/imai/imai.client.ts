@@ -12,15 +12,35 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 
 interface ImaiSearchResponse {
   status: string;
-  list: Array<{
+  users?: Array<{
+    pk?: number;
+    id?: string;
+    username?: string;
+    full_name?: string;
+    profile_pic_url?: string;
+    is_verified?: boolean;
+    follower_count?: number;
+    is_private?: boolean;
+    social_context?: string | null;
+    [key: string]: unknown;
+  }>;
+  list?: Array<{
     user?: {
       username?: string;
       full_name?: string;
       profile_pic_url?: string;
+      is_verified?: boolean;
+      follower_count?: number;
       [key: string]: unknown;
     };
     [key: string]: unknown;
   }>;
+  data?: {
+    users?: Array<any>;
+    list?: Array<any>;
+    [key: string]: unknown;
+  };
+  has_more?: boolean;
 }
 
 interface ImaiUserInfoResponse {
@@ -36,6 +56,18 @@ interface ImaiUserInfoResponse {
     following_count: number;
     [key: string]: unknown;
   };
+}
+
+interface ImaiHighlightsResponse {
+  status: string;
+  highlights?: Array<{
+    id?: string;
+    title?: string;
+    cover_image_url?: string;
+    media_count?: number;
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
 }
 
 interface CacheEntry<T> {
@@ -54,24 +86,23 @@ export class ImaiClient {
   private readonly baseUrl: string;
   private readonly apiKey: string;
 
-  // Rate limiting: max 1 request per second
+  // Rate limiting: reasonable interval for autocomplete
   private lastRequestTime = 0;
-  private readonly minRequestInterval = 1000; // 1 second in ms
+  private readonly minRequestInterval = 200; // 200ms for responsive autocomplete
   private requestQueue: QueuedRequest<unknown>[] = [];
   private isProcessingQueue = false;
 
   // In-memory cache with TTL
   private searchCache = new Map<string, CacheEntry<ImaiSearchResponse>>();
   private userInfoCache = new Map<string, CacheEntry<ImaiUserInfoResponse>>();
-  private readonly searchCacheTTL = 3000; // 3 seconds
-  private readonly userInfoCacheTTL = 10000; // 10 seconds
+  private highlightsCache = new Map<string, CacheEntry<ImaiHighlightsResponse>>();
+  private readonly searchCacheTTL = 30000; // 30 seconds for better cache reuse
+  private readonly userInfoCacheTTL = 60000; // 60 seconds
+  private readonly highlightsCacheTTL = 60000; // 60 seconds
 
   constructor() {
     this.apiKey = process.env.IMAI_API_KEY || '';
     this.baseUrl = process.env.IMAI_BASE_URL || 'https://imai.co/api/';
-
-    console.log('[ImaiClient] Initialized with base URL:', this.baseUrl);
-    console.log('[ImaiClient] API key present:', !!this.apiKey, this.apiKey ? `(length: ${this.apiKey.length})` : '');
 
     if (!this.apiKey) {
       throw new Error('IMAI_API_KEY environment variable is required');
@@ -79,7 +110,7 @@ export class ImaiClient {
   }
 
   /**
-   * Process the request queue with rate limiting (max 1 request per second)
+   * Process the request queue with rate limiting (200ms between requests)
    */
   private async processQueue(): Promise<void> {
     if (this.isProcessingQueue || this.requestQueue.length === 0) {
@@ -175,9 +206,6 @@ export class ImaiClient {
     });
 
     const requestUrl = url.toString();
-    const requestUrlWithoutKey = requestUrl; // URL doesn't contain the key
-    console.log('[ImaiClient] Making request to:', requestUrlWithoutKey);
-    console.log('[ImaiClient] Using API key:', this.apiKey ? `${this.apiKey.substring(0, 4)}...${this.apiKey.substring(this.apiKey.length - 4)}` : 'MISSING');
 
     try {
       const response = await fetch(requestUrl, {
@@ -186,9 +214,6 @@ export class ImaiClient {
           'authkey': this.apiKey,
         },
       });
-
-      console.log('[ImaiClient] Response status:', response.status);
-      console.log('[ImaiClient] Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
 
       // Handle rate limiting
       if (response.status === 429) {
@@ -238,12 +263,8 @@ export class ImaiClient {
       try {
         data = JSON.parse(responseText);
       } catch (parseError) {
-        console.error('[ImaiClient] Failed to parse JSON response');
-        console.error('[ImaiClient] Response status:', response.status);
-        console.error('[ImaiClient] Content-Type:', response.headers.get('content-type'));
-        console.error('[ImaiClient] Response text (first 500 chars):', responseText.substring(0, 500));
         throw new HttpException(
-          `Upstream API returned invalid JSON (status: ${response.status}, content-type: ${response.headers.get('content-type')})`,
+          `Upstream API returned invalid JSON (status: ${response.status})`,
           HttpStatus.BAD_GATEWAY,
         );
       }
@@ -336,6 +357,128 @@ export class ImaiClient {
     // Cache successful responses only (status === "ok")
     if (result.status === 'ok') {
       this.setCache(this.userInfoCache, url, result);
+    }
+
+    return result;
+  }
+
+  /**
+   * Get Instagram highlights (story highlights) for a user
+   * 
+   * @param username - Username or user ID
+   * @returns Highlights response containing array of highlights
+   */
+  async getInstagramHighlights(username: string): Promise<ImaiHighlightsResponse> {
+    // Check cache first
+    const cached = this.getCached(
+      this.highlightsCache,
+      username,
+      this.highlightsCacheTTL,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    // Enqueue request with rate limiting
+    const result = await this.enqueueRequest(() =>
+      this.request<ImaiHighlightsResponse>('raw/ig/highlights/', {
+        url: username,
+      }),
+    );
+
+    // Cache successful responses only (status === "ok")
+    if (result.status === 'ok') {
+      this.setCache(this.highlightsCache, username, result);
+    }
+
+    return result;
+  }
+
+  /**
+   * Get hashtag feed (recent or top posts)
+   * 
+   * @param hashtag - Hashtag without # symbol
+   * @param type - Feed type: 'recent' or 'top'
+   * @param after - Cursor for pagination
+   * @returns Hashtag feed response with items and pagination info
+   */
+  async getHashtagFeed(
+    hashtag: string,
+    type: 'recent' | 'top' = 'recent',
+    after?: string,
+  ): Promise<any> {
+    const params: Record<string, string> = {
+      hashtag,
+      type,
+    };
+
+    if (after) {
+      params.after = after;
+    }
+
+    // Build cache key
+    const cacheKey = `${hashtag}:${type}:${after || 'first'}`;
+
+    // Check cache first (30s TTL like search)
+    const cached = this.getCached(
+      this.searchCache as any, // Reuse search cache map
+      cacheKey,
+      this.searchCacheTTL,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    // Enqueue request with rate limiting
+    const result = await this.enqueueRequest(() =>
+      this.request<any>('raw/ig/hashtag/feed/', params),
+    );
+
+    // Cache successful responses
+    if (result.status === 'ok') {
+      this.setCache(this.searchCache as any, cacheKey, result);
+    }
+
+    return result;
+  }
+
+  /**
+   * Get user feed (posts)
+   * 
+   * @param username - Instagram username
+   * @param after - Cursor for pagination
+   * @returns User feed response with items and pagination info
+   */
+  async getUserFeed(username: string, after?: string): Promise<any> {
+    const params: Record<string, string> = {
+      url: username,
+    };
+
+    if (after) {
+      params.after = after;
+    }
+
+    // Build cache key
+    const cacheKey = `user:${username}:${after || 'first'}`;
+
+    // Check cache first (30s TTL)
+    const cached = this.getCached(
+      this.searchCache as any,
+      cacheKey,
+      this.searchCacheTTL,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    // Enqueue request with rate limiting
+    const result = await this.enqueueRequest(() =>
+      this.request<any>('raw/ig/user/feed/', params),
+    );
+
+    // Cache successful responses
+    if (result.status === 'ok') {
+      this.setCache(this.searchCache as any, cacheKey, result);
     }
 
     return result;

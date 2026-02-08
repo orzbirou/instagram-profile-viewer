@@ -9,6 +9,16 @@ import { ProfileHeaderComponent } from './components/profile-header/profile-head
 import { ProfileHighlightsComponent } from './components/profile-highlights/profile-highlights.component';
 import { ProfilePostsGridComponent, Post } from './components/profile-posts-grid/profile-posts-grid.component';
 
+type ProfileTab = 'posts' | 'reels' | 'tagged' | 'reposts';
+
+interface ProfileMediaItem {
+  code: string;
+  displayUrl: string;
+  mediaType?: number;
+  likeCount?: number;
+  commentCount?: number;
+}
+
 interface ProfileState {
   data: ProfileDto | null;
   loading: boolean;
@@ -30,7 +40,7 @@ export class ProfileComponent {
   highlightsLoading = signal<boolean>(false);
   highlightsError = signal<string | null>(null);
 
-  // Tab navigation state
+  // Tab navigation state (legacy - will be replaced)
   activeTab = signal<'posts' | 'reels' | 'tagged'>('posts');
 
   // Posts state (mocked data for UI-only implementation)
@@ -44,6 +54,14 @@ export class ProfileComponent {
   // Tagged state (mocked data)
   tagged = signal<Post[]>([]);
   taggedLoading = signal<boolean>(true);
+
+  // New signals-first tab state model
+  selectedTab = signal<ProfileTab>('posts');
+  items = signal<ProfileMediaItem[]>([]);
+  isLoading = signal(false);
+  tabError = signal<string | null>(null);
+  endCursor = signal<string | undefined>(undefined);
+  moreAvailable = signal(false);
 
   // Computed signals for active grid
   activeGridItems = computed(() => {
@@ -108,6 +126,16 @@ export class ProfileComponent {
         this.loadMockedData();
       }
     });
+
+    // Load posts when username or selectedTab changes to 'posts'
+    effect(() => {
+      const currentUsername = this.username();
+      const tab = this.selectedTab();
+      
+      if (currentUsername && tab === 'posts') {
+        this.loadPosts({ reset: true });
+      }
+    });
   }
 
   private loadMockedData(): void {
@@ -153,6 +181,64 @@ export class ProfileComponent {
 
   switchTab(tab: 'posts' | 'reels' | 'tagged'): void {
     this.activeTab.set(tab);
+  }
+
+  setTab(tab: ProfileTab): void {
+    this.selectedTab.set(tab);
+    this.items.set([]);
+    this.isLoading.set(false);
+    this.tabError.set(null);
+    this.endCursor.set(undefined);
+    this.moreAvailable.set(false);
+  }
+
+  async loadPosts(opts: { reset: boolean }): Promise<void> {
+    const currentUsername = this.username();
+    if (!currentUsername) return;
+
+    if (opts.reset) {
+      this.items.set([]);
+      this.endCursor.set(undefined);
+      this.tabError.set(null);
+      this.isLoading.set(true);
+    } else {
+      // Loading more
+      if (!this.moreAvailable() || this.isLoading()) return;
+      this.isLoading.set(true);
+    }
+
+    try {
+      const cursor = opts.reset ? undefined : this.endCursor();
+      const response = await this.profileApi.getUserPosts(currentUsername, cursor);
+
+      // Map response items to ProfileMediaItem
+      const newItems: ProfileMediaItem[] = response.items.map(item => ({
+        code: item.code,
+        displayUrl: item.displayUrl,
+        mediaType: item.mediaType,
+        likeCount: item.likeCount,
+        commentCount: item.commentCount,
+      }));
+
+      if (opts.reset) {
+        this.items.set(newItems);
+      } else {
+        this.items.update(current => [...current, ...newItems]);
+      }
+
+      this.endCursor.set(response.endCursor);
+      this.moreAvailable.set(response.moreAvailable);
+      this.isLoading.set(false);
+    } catch (error) {
+      this.tabError.set('Failed to load posts');
+      this.isLoading.set(false);
+    }
+  }
+
+  loadMore(): void {
+    if (this.selectedTab() === 'posts') {
+      this.loadPosts({ reset: false });
+    }
   }
 
   private fetchHighlights(username: string): void {

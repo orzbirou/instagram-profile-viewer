@@ -15,6 +15,21 @@ export interface ProfileDto {
   following: number;
 }
 
+export interface UserPostItem {
+  code: string;
+  displayUrl: string;
+  mediaType?: number;
+  likeCount?: number;
+  commentCount?: number;
+}
+
+export interface UserPostsResponse {
+  status: string;
+  items: UserPostItem[];
+  endCursor?: string;
+  moreAvailable: boolean;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -35,5 +50,27 @@ export class ProfileApiService {
           return throwError(() => apiError);
         })
       );
+  }
+
+  async getUserPosts(
+    username: string,
+    after?: string
+  ): Promise<UserPostsResponse> {
+    try {
+      let url = `${this.apiBaseUrl}/profile/${username}/posts`;
+      if (after) {
+        url += `?after=${encodeURIComponent(after)}`;
+      }
+
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
   }
 }
