@@ -17,6 +17,9 @@ import {
   HashtagFeedCarouselItemDto 
 } from './dto/hashtag-feed.dto';
 import { UserPostsResponseDto, UserPostItemDto } from './dto/user-posts.dto';
+import { MediaInfoDto, MediaInfoCarouselItemDto } from './dto/media-info.dto';
+import { MediaCommentsResponseDto, CommentDto } from './dto/media-comments.dto';
+import { UserStoriesResponseDto, StoryItemDto, StoryUserDto } from './dto/stories.dto';
 import { ImaiClient } from './imai/imai.client';
 
 /**
@@ -46,6 +49,19 @@ import { ImaiClient } from './imai/imai.client';
 @Controller()
 export class AppController {
   constructor(private readonly imaiClient: ImaiClient) {}
+
+  private mapMediaType(mediaType: number | undefined): string {
+    switch (mediaType) {
+      case 1:
+        return 'IMAGE';
+      case 2:
+        return 'VIDEO';
+      case 8:
+        return 'CAROUSEL';
+      default:
+        return 'UNKNOWN';
+    }
+  }
 
   @Get()
   getHello(): string {
@@ -134,6 +150,68 @@ export class AppController {
     return { highlights: mockedHighlights };
   }
 
+  @Get('profile/:username/stories')
+  async getUserStories(
+    @Param('username') username: string,
+  ): Promise<UserStoriesResponseDto> {
+    try {
+      // Validate username
+      if (!username || username.trim().length === 0) {
+        throw new BadRequestException('Username is required');
+      }
+
+      // Call IMAI API
+      const response = await this.imaiClient.getUserStories(username.trim());
+
+      console.log('[getUserStories] Response structure:', JSON.stringify(response).substring(0, 500));
+
+      // Extract user and items from response - handle multiple possible structures
+      const reel = response.reel || response.reels_media?.[0] || response;
+      
+      if (!reel || (!reel.user && !reel.owner)) {
+        // If no stories, return empty array instead of 404
+        return {
+          status: 'ok',
+          user: {
+            username: username,
+            profilePicUrl: '',
+          },
+          items: [],
+        };
+      }
+
+      const user: StoryUserDto = {
+        username: reel.user?.username || reel.owner?.username || username,
+        profilePicUrl: reel.user?.profile_pic_url || reel.owner?.profile_pic_url || '',
+      };
+
+      const items: StoryItemDto[] = (reel.items || []).map((item: any) => ({
+        id: String(item.id || item.pk || ''),
+        mediaType: item.media_type || 1,
+        imageUrl: item.image_versions2?.candidates?.[0]?.url || item.display_url || '',
+        videoUrl: item.video_versions?.[0]?.url || null,
+        takenAt: item.taken_at || 0,
+        expiringAt: item.expiring_at || 0,
+      }));
+
+      return {
+        status: 'ok',
+        user,
+        items,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('[getUserStories] Error:', error);
+      throw new HttpException(
+        'Failed to fetch user stories',
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
+
   @Get('profile/:username')
   async getProfile(@Param('username') username: string): Promise<ProfileDto> {
     try {
@@ -196,6 +274,141 @@ export class AppController {
       throw new HttpException(
         {
           message: 'Failed to fetch user posts',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('profile/:username/reels')
+  async getUserReels(
+    @Param('username') username: string,
+    @Query('after') after?: string,
+  ): Promise<UserPostsResponseDto> {
+    try {
+      // Validate username
+      if (!username || username.trim().length === 0) {
+        throw new BadRequestException('Username is required');
+      }
+
+      // Call IMAI API
+      const response = await this.imaiClient.getUserReels(username.trim(), after);
+
+      // Map to slim DTO - reels may have nested media structure
+      const items: UserPostItemDto[] = (response.items || []).map((item: any) => {
+        const media = item.media || item;
+        return {
+          code: media.code || media.pk || item.code || item.pk,
+          displayUrl: media.image_versions2?.candidates?.[0]?.url || media.display_url || '',
+          mediaType: media.media_type || 2, // Default to video (2) for reels
+          likeCount: media.like_count,
+          commentCount: media.comment_count,
+          videoUrl: media.video_url || media.video_versions?.[0]?.url || null,
+        };
+      });
+
+      return {
+        status: 'ok',
+        items,
+        endCursor: response.end_cursor,
+        moreAvailable: response.more_available || false,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          message: 'Failed to fetch user reels',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('profile/:username/tagged')
+  async getUserTagged(
+    @Param('username') username: string,
+    @Query('after') after?: string,
+  ): Promise<UserPostsResponseDto> {
+    try {
+      // Validate username
+      if (!username || username.trim().length === 0) {
+        throw new BadRequestException('Username is required');
+      }
+
+      // Call IMAI API
+      const response = await this.imaiClient.getUserTagsFeed(username.trim(), after);
+
+      // Map to slim DTO - handle nested media structure
+      const srcItems = Array.isArray(response?.items) ? response.items : [];
+      const items: UserPostItemDto[] = srcItems.map((item: any) => {
+        const media = item?.media ?? item;
+        return {
+          code: media?.code || media?.pk || item?.code || item?.pk,
+          displayUrl: media?.display_url || media?.image_versions2?.candidates?.[0]?.url || '',
+          mediaType: media?.media_type || 0,
+          likeCount: media?.like_count || 0,
+          commentCount: media?.comment_count || 0,
+        };
+      }).filter((x: UserPostItemDto) => !!x.displayUrl && !!x.code);
+
+      return {
+        status: 'ok',
+        items,
+        endCursor: response.end_cursor,
+        moreAvailable: response.more_available || false,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          message: 'Failed to fetch tagged posts',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('profile/:username/reposts')
+  async getUserReposts(
+    @Param('username') username: string,
+    @Query('after') after?: string,
+  ): Promise<UserPostsResponseDto> {
+    try {
+      // Validate username
+      if (!username || username.trim().length === 0) {
+        throw new BadRequestException('Username is required');
+      }
+
+      // Call IMAI API
+      const response = await this.imaiClient.getUserRepostedFeed(username.trim(), after);
+
+      // Diagnostic log
+      console.log('[reposts]', username, 'items=', (response.items||[]).length, 'sampleKeys=', response.items?.[0] ? Object.keys(response.items[0]) : []);
+
+      // Map to slim DTO - handle nested media structure
+      const srcItems = Array.isArray(response?.items) ? response.items : [];
+      const items: UserPostItemDto[] = srcItems.map((item: any) => {
+        const media = item?.media ?? item;
+        return {
+          code: media?.code || media?.pk,
+          displayUrl: media?.display_url || media?.image_versions2?.candidates?.[0]?.url || '',
+          mediaType: media?.media_type || 0,
+          likeCount: media?.like_count || 0,
+          commentCount: media?.comment_count || 0,
+        };
+      }).filter((x: UserPostItemDto) => !!x.displayUrl && !!x.code);
+
+      return {
+        status: 'ok',
+        items,
+        endCursor: response.end_cursor,
+        moreAvailable: response.more_available || false,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          message: 'Failed to fetch reposts',
           details: error instanceof Error ? error.message : 'Unknown error',
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -381,6 +594,96 @@ export class AppController {
       console.error('[ImageProxy] Failed to fetch image:', error);
       throw new HttpException(
         'Failed to fetch image from upstream',
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
+
+  @Get('media/:code')
+  async getMediaInfo(@Param('code') code: string): Promise<MediaInfoDto> {
+    try {
+      const response = await this.imaiClient.getMediaInfo(code);
+
+      // Extract media data from upstream response
+      const item = response.items?.[0];
+      if (!item) {
+        throw new HttpException('Media not found', HttpStatus.NOT_FOUND);
+      }
+
+      // Map to MediaInfoDto
+      const mediaInfo: MediaInfoDto = {
+        code: item.code || code,
+        captionText: item.caption?.text || '',
+        takenAt: item.taken_at || 0,
+        mediaType: this.mapMediaType(item.media_type),
+        displayUrl: item.image_versions2?.candidates?.[0]?.url || item.display_url || '',
+        videoUrl: item.video_url || item.video_versions?.[0]?.url || null,
+        user: {
+          username: item.user?.username || '',
+          profilePicUrl: item.user?.profile_pic_url || '',
+        },
+        likeCount: item.like_count || 0,
+        commentCount: item.comment_count || 0,
+      };
+
+      // Handle carousel (multiple media items)
+      if (item.carousel_media && Array.isArray(item.carousel_media)) {
+        mediaInfo.carousel = item.carousel_media.map((carouselItem: any): MediaInfoCarouselItemDto => ({
+          displayUrl: carouselItem.image_versions2?.candidates?.[0]?.url || carouselItem.display_url || '',
+          videoUrl: carouselItem.video_url || carouselItem.video_versions?.[0]?.url || null,
+          mediaType: this.mapMediaType(carouselItem.media_type),
+        }));
+      }
+
+      return mediaInfo;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('[getMediaInfo] Error:', error);
+      throw new HttpException(
+        'Failed to fetch media info',
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
+
+  @Get('media/:code/comments')
+  async getMediaComments(
+    @Param('code') code: string,
+    @Query('after') after?: string,
+  ): Promise<MediaCommentsResponseDto> {
+    try {
+      const response = await this.imaiClient.getMediaComments(code, after);
+
+      // Extract comments from upstream response
+      const rawComments = response.comments || [];
+      
+      const comments: CommentDto[] = rawComments.map((comment: any) => ({
+        id: String(comment.pk || comment.id || ''),
+        text: comment.text || '',
+        createdAt: comment.created_at || comment.created_at_utc || 0,
+        likeCount: comment.comment_like_count || 0,
+        user: {
+          username: comment.user?.username || '',
+          profilePicUrl: comment.user?.profile_pic_url || '',
+        },
+      }));
+
+      return {
+        comments,
+        endCursor: response.next_max_id || response.end_cursor,
+        hasMore: response.has_more_comments || false,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('[getMediaComments] Error:', error);
+      throw new HttpException(
+        'Failed to fetch media comments',
         HttpStatus.BAD_GATEWAY,
       );
     }

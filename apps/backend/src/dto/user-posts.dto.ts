@@ -4,6 +4,7 @@ export class UserPostItemDto {
   mediaType?: number;
   likeCount?: number;
   commentCount?: number;
+  videoUrl?: string;
 }
 
 export class UserPostsResponseDto {

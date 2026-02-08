@@ -483,4 +483,246 @@ export class ImaiClient {
 
     return result;
   }
+
+  /**
+   * Get user reels
+   * 
+   * @param username - Instagram username
+   * @param after - Cursor for pagination
+   * @returns User reels response with items and pagination info
+   */
+  async getUserReels(username: string, after?: string): Promise<any> {
+    const params: Record<string, string> = {
+      url: username,
+    };
+
+    if (after) {
+      params.after = after;
+    }
+
+    // Build cache key
+    const cacheKey = `reels:${username}:${after || 'first'}`;
+
+    // Check cache first (30s TTL)
+    const cached = this.getCached(
+      this.searchCache as any,
+      cacheKey,
+      this.searchCacheTTL,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    // Enqueue request with rate limiting
+    const result = await this.enqueueRequest(() =>
+      this.request<any>('raw/ig/user/reels/', params),
+    );
+
+    // Cache successful responses
+    if (result.status === 'ok') {
+      this.setCache(this.searchCache as any, cacheKey, result);
+    }
+
+    return result;
+  }
+
+  /**
+   * Get media info by code
+   * 
+   * @param code - Instagram media code (shortcode)
+   * @returns Media info response with detailed post information
+   */
+  async getMediaInfo(code: string): Promise<any> {
+    const params: Record<string, string> = {
+      code,
+    };
+
+    // Build cache key
+    const cacheKey = `media:${code}`;
+
+    // Check cache first (60s TTL like user info)
+    const cached = this.getCached(
+      this.userInfoCache as any,
+      cacheKey,
+      this.userInfoCacheTTL,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    // Enqueue request with rate limiting
+    const result = await this.enqueueRequest(() =>
+      this.request<any>('raw/ig/media/info/', params),
+    );
+
+    // Cache successful responses
+    if (result.status === 'ok') {
+      this.setCache(this.userInfoCache as any, cacheKey, result);
+    }
+
+    return result;
+  }
+
+  /**
+   * Get media comments
+   * 
+   * @param code - Instagram media code (shortcode)
+   * @param after - Cursor for pagination
+   * @returns Comments response with list of comments and pagination info
+   */
+  async getMediaComments(code: string, after?: string): Promise<any> {
+    const params: Record<string, string> = {
+      code,
+    };
+
+    if (after) {
+      params.after = after;
+    }
+
+    // Build cache key
+    const cacheKey = `comments:${code}:${after || 'first'}`;
+
+    // Check cache first (30s TTL like posts)
+    const cached = this.getCached(
+      this.searchCache as any,
+      cacheKey,
+      this.searchCacheTTL,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    // Enqueue request with rate limiting
+    const result = await this.enqueueRequest(() =>
+      this.request<any>('raw/ig/media/comments/', params),
+    );
+
+    // Cache successful responses
+    if (result.status === 'ok') {
+      this.setCache(this.searchCache as any, cacheKey, result);
+    }
+
+    return result;
+  }
+
+  /**
+   * Get user stories
+   * 
+   * @param username - Instagram username
+   * @returns User stories response with items
+   */
+  async getUserStories(username: string): Promise<any> {
+    const params: Record<string, string> = {
+      url: username,
+    };
+
+    // Build cache key
+    const cacheKey = `stories:${username}`;
+
+    // Check cache first (30s TTL)
+    const cached = this.getCached(
+      this.searchCache as any,
+      cacheKey,
+      this.searchCacheTTL,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    // Enqueue request with rate limiting
+    const result = await this.enqueueRequest(() =>
+      this.request<any>('raw/ig/user/stories/', params),
+    );
+
+    // Cache successful responses
+    if (result.status === 'ok') {
+      this.setCache(this.searchCache as any, cacheKey, result);
+    }
+
+    return result;
+  }
+
+  /**
+   * Get user tagged feed
+   * 
+   * @param username - Instagram username
+   * @param after - Cursor for pagination
+   * @returns User tagged feed response with items and pagination info
+   */
+  async getUserTagsFeed(username: string, after?: string): Promise<any> {
+    const params: Record<string, string> = {
+      url: username,
+    };
+
+    if (after) {
+      params.after = after;
+    }
+
+    // Build cache key
+    const cacheKey = `tagged:${username}:${after || 'first'}`;
+
+    // Check cache first (30s TTL)
+    const cached = this.getCached(
+      this.searchCache as any,
+      cacheKey,
+      this.searchCacheTTL,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    // Enqueue request with rate limiting
+    const result = await this.enqueueRequest(() =>
+      this.request<any>('raw/ig/usertags/feed/', params),
+    );
+
+    // Cache successful responses
+    if (result.status === 'ok') {
+      this.setCache(this.searchCache as any, cacheKey, result);
+    }
+
+    return result;
+  }
+
+  /**
+   * Get user reposted feed
+   * 
+   * @param username - Instagram username
+   * @param after - Cursor for pagination
+   * @returns User reposted feed response with items and pagination info
+   */
+  async getUserRepostedFeed(username: string, after?: string): Promise<any> {
+    const params: Record<string, string> = {
+      url: username,
+    };
+
+    if (after) {
+      params.after = after;
+    }
+
+    // Build cache key
+    const cacheKey = `reposts:${username}:${after || 'first'}`;
+
+    // Check cache first (30s TTL)
+    const cached = this.getCached(
+      this.searchCache as any,
+      cacheKey,
+      this.searchCacheTTL,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    // Enqueue request with rate limiting
+    const result = await this.enqueueRequest(() =>
+      this.request<any>('raw/ig/user/reposted_feed/', params),
+    );
+
+    // Cache successful responses
+    if (result.status === 'ok') {
+      this.setCache(this.searchCache as any, cacheKey, result);
+    }
+
+    return result;
+  }
 }
