@@ -8,7 +8,8 @@
   "scripts": {
     "dev:backend": "npm --workspace apps/backend run start:dev",
     "dev:frontend": "npm --workspace apps/frontend run start",
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "deploy:gh-pages": "npm run -w apps/frontend build -- --configuration production --base-href /instagram-profile-viewer/ --deploy-url /instagram-profile-viewer/"
   },
   "description": "Instagram Profile Viewer - Monorepo",
   "author": "",
