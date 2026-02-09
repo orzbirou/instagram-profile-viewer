@@ -11,7 +11,7 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build:backend": "npm --workspace apps/backend run build",
     "start:backend:prod": "node apps/backend/dist/main.js",
-    "deploy:gh-pages": "npm run -w apps/frontend build -- --configuration production --base-href /instagram-profile-viewer/ --deploy-url /instagram-profile-viewer/"
+    "deploy:gh-pages": "npm run -w apps/frontend build -- --base-href /instagram-profile-viewer/ --deploy-url /instagram-profile-viewer/ --configuration production"
   },
   "description": "Instagram Profile Viewer - Monorepo",
   "author": "",
