@@ -1,6 +1,23 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 
 /**
+ * Custom error class for IMAI API errors with detailed upstream information
+ */
+export class ImaiUpstreamError extends Error {
+  constructor(
+    message: string,
+    public readonly upstreamStatus: number,
+    public readonly upstreamBody: unknown,
+    public readonly upstreamPath: string,
+    public readonly upstreamQuery: Record<string, string>,
+    public readonly upstreamHeaders: Record<string, string>,
+  ) {
+    super(message);
+    this.name = 'ImaiUpstreamError';
+  }
+}
+
+/**
  * IMAI API Client
  * 
  * Provides methods to interact with the IMAI Instagram API.
@@ -60,6 +77,17 @@ interface ImaiUserInfoResponse {
 
 interface ImaiHighlightsResponse {
   status: string;
+  tray?: Array<{
+    id?: string;
+    title?: string;
+    cover_media?: {
+      cropped_image_version?: {
+        url?: string;
+      };
+    };
+    media_count?: number;
+    [key: string]: unknown;
+  }>;
   highlights?: Array<{
     id?: string;
     title?: string;
@@ -215,44 +243,88 @@ export class ImaiClient {
         },
       });
 
+      // Extract safe headers (rate limit info, etc.)
+      const safeHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        if (key.startsWith('x-') || key.startsWith('ratelimit-') || key === 'retry-after') {
+          safeHeaders[key] = value;
+        }
+      });
+
       // Handle rate limiting
       if (response.status === 429) {
-        throw new HttpException(
+        let errorBody: unknown;
+        try {
+          errorBody = await response.json();
+        } catch {
+          errorBody = await response.text().catch(() => 'Rate limit exceeded');
+        }
+        
+        throw new ImaiUpstreamError(
           'Rate limit exceeded. Please try again later.',
-          HttpStatus.TOO_MANY_REQUESTS,
+          response.status,
+          errorBody,
+          path,
+          params,
+          safeHeaders,
         );
       }
 
       // Handle authentication errors
       if (response.status === 401 || response.status === 403) {
+        let errorBody: unknown;
+        try {
+          errorBody = await response.json();
+        } catch {
+          errorBody = await response.text().catch(() => 'Authentication failed');
+        }
+        
         console.error('[ImaiClient] Authentication failed - check IMAI_API_KEY');
-        throw new HttpException(
+        throw new ImaiUpstreamError(
           'Upstream API authentication failed. Please verify IMAI_API_KEY.',
-          HttpStatus.BAD_GATEWAY,
+          response.status,
+          errorBody,
+          path,
+          params,
+          safeHeaders,
         );
       }
 
       // Handle other client errors (4xx)
       if (response.status >= 400 && response.status < 500) {
-        let errorMessage = 'Upstream API error';
+        let errorBody: unknown;
         try {
-          const errorBody = await response.json();
-          errorMessage = JSON.stringify(errorBody);
+          errorBody = await response.json();
         } catch {
-          const errorText = await response.text().catch(() => 'Unknown error');
-          errorMessage = errorText || `HTTP ${response.status}`;
+          errorBody = await response.text().catch(() => 'Unknown error');
         }
-        throw new HttpException(
-          `Upstream API error: ${errorMessage}`,
-          HttpStatus.BAD_GATEWAY,
+        
+        throw new ImaiUpstreamError(
+          `Upstream API error: ${JSON.stringify(errorBody)}`,
+          response.status,
+          errorBody,
+          path,
+          params,
+          safeHeaders,
         );
       }
 
       // Handle server errors (5xx) or other non-2xx
       if (!response.ok) {
-        throw new HttpException(
+        let errorBody: unknown;
+        try {
+          errorBody = await response.json();
+        } catch {
+          errorBody = await response.text().catch(() => 'Service unavailable');
+        }
+        
+        throw new ImaiUpstreamError(
           'Upstream service unavailable',
-          HttpStatus.BAD_GATEWAY,
+          response.status,
+          errorBody,
+          path,
+          params,
+          safeHeaders,
         );
       }
 
@@ -284,6 +356,11 @@ export class ImaiClient {
 
       return data as T;
     } catch (error) {
+      // Re-throw ImaiUpstreamError to preserve detailed error info
+      if (error instanceof ImaiUpstreamError) {
+        throw error;
+      }
+
       // Re-throw HttpExceptions as-is
       if (error instanceof HttpException) {
         throw error;
@@ -381,7 +458,7 @@ export class ImaiClient {
 
     // Enqueue request with rate limiting
     const result = await this.enqueueRequest(() =>
-      this.request<ImaiHighlightsResponse>('raw/ig/highlights/', {
+      this.request<ImaiHighlightsResponse>('raw/ig/user/highlights/', {
         url: username,
       }),
     );
@@ -637,6 +714,43 @@ export class ImaiClient {
     // Cache successful responses
     if (result.status === 'ok') {
       this.setCache(this.searchCache as any, cacheKey, result);
+    }
+
+    return result;
+  }
+
+  /**
+   * Get highlight items by highlight ID
+   * 
+   * @param highlightId - Highlight ID (e.g., "highlight:18029499352961095")
+   * @returns Highlight items response
+   */
+  async getHighlightItems(highlightId: string): Promise<any> {
+    const params: Record<string, string> = {
+      highlight_id: highlightId,
+    };
+
+    // Build cache key
+    const cacheKey = `highlight:${highlightId}`;
+
+    // Check cache first (60s TTL)
+    const cached = this.getCached(
+      this.userInfoCache as any,
+      cacheKey,
+      this.userInfoCacheTTL,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    // Enqueue request with rate limiting
+    const result = await this.enqueueRequest(() =>
+      this.request<any>('raw/ig/highlight/info/', params),
+    );
+
+    // Cache successful responses
+    if (result.status === 'ok') {
+      this.setCache(this.userInfoCache as any, cacheKey, result);
     }
 
     return result;

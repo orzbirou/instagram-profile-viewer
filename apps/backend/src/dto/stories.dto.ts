@@ -17,3 +17,10 @@ export class UserStoriesResponseDto {
   user: StoryUserDto;
   items: StoryItemDto[];
 }
+
+export class HighlightItemsResponseDto {
+  items: StoryItemDto[];
+  user?: StoryUserDto;
+  unavailable?: boolean;
+  reason?: string;
+}

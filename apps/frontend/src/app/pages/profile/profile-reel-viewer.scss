@@ -1,0 +1,141 @@
+// Reels Viewer Styles
+.reel-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 0;
+}
+
+.reel-viewer-container {
+  position: relative;
+  width: 100%;
+  max-width: 935px;
+  height: 100%;
+  max-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reel-viewer-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  color: white;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  svg {
+    color: white;
+  }
+}
+
+.reel-viewer-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  color: white;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  svg {
+    color: white;
+  }
+
+  &.reel-viewer-arrow-prev {
+    left: 20px;
+  }
+
+  &.reel-viewer-arrow-next {
+    right: 20px;
+  }
+}
+
+.reel-viewer-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 100px 60px;
+}
+
+.reel-viewer-media {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: calc(100vh - 200px);
+}
+
+.reel-viewer-meta {
+  margin-top: 20px;
+  padding: 16px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.reel-viewer-stats {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .reel-viewer-arrow {
+    display: none;
+  }
+
+  .reel-viewer-content {
+    padding: 80px 20px 40px;
+  }
+
+  .reel-viewer-media {
+    max-height: calc(100vh - 160px);
+  }
+
+  .reel-viewer-close {
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+  }
+}

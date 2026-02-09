@@ -1,4 +1,5 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, ViewChild, ElementRef } from '@angular/core';
+import { environment } from '../../../../../environments/environment';
 import type { Highlight } from '../../../../services/highlights-api.service';
 
 /**
@@ -44,12 +45,33 @@ export class ProfileHighlightsComponent {
   isLoading = input<boolean>(false);
   error = input<string | null>(null);
   retry = output<void>();
+  highlightClick = output<{ id: string; title: string }>();
+
+  @ViewChild('highlightsTrack', { static: false })
+  private highlightsTrack?: ElementRef<HTMLDivElement>;
 
   trackById(index: number, item: Highlight): string {
     return item.id;
   }
 
+  scrollHighlights(direction: -1 | 1): void {
+    const el = this.highlightsTrack?.nativeElement;
+    if (!el) return;
+
+    // Scroll by ~one viewport width (page). This feels like IG arrows.
+    const amount = Math.round(el.clientWidth * 0.9) * direction;
+    el.scrollBy({ left: amount, behavior: 'smooth' });
+  }
+
+  getProxyImageUrl(coverUrl: string): string {
+    return `${environment.apiBaseUrl}/proxy/image?url=${encodeURIComponent(coverUrl)}`;
+  }
+
   onRetry(): void {
     this.retry.emit();
+  }
+
+  onHighlightClick(highlight: Highlight): void {
+    this.highlightClick.emit({ id: highlight.id, title: highlight.title });
   }
 }

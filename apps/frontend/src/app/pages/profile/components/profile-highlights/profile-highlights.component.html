@@ -19,16 +19,30 @@
       </button>
     </div>
   } @else if (highlights().length === 0) {
-    <!-- Empty state: show nothing for cleaner UI -->
+    <!-- Empty state: show subtle message -->
+    <div class="highlights-empty">
+      No highlights yet
+    </div>
   } @else {
-    <!-- Highlights list -->
-    <div class="highlights-container">
-      @for (highlight of highlights(); track trackById($index, highlight)) {
-        <div class="highlight-item" [attr.data-id]="highlight.id">
+    <!-- Highlights carousel with arrows -->
+    <div class="highlights-carousel">
+      <button
+        type="button"
+        class="carousel-arrow left"
+        aria-label="Scroll highlights left"
+        (click)="scrollHighlights(-1)">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <div #highlightsTrack class="highlights-track">
+        @for (highlight of highlights(); track trackById($index, highlight)) {
+          <div class="highlight-item" [attr.data-id]="highlight.id" (click)="onHighlightClick(highlight)" style="cursor: pointer;">
           <div class="highlight-circle" [attr.aria-label]="highlight.title + ', ' + highlight.itemsCount + ' items'">
             @if (highlight.coverUrl) {
               <img 
-                [src]="highlight.coverUrl" 
+                [src]="getProxyImageUrl(highlight.coverUrl)" 
                 [alt]="highlight.title"
                 class="highlight-image"
                 loading="lazy"
@@ -48,6 +62,17 @@
           <div class="highlight-title">{{ highlight.title }}</div>
         </div>
       }
+      </div>
+
+      <button
+        type="button"
+        class="carousel-arrow right"
+        aria-label="Scroll highlights right"
+        (click)="scrollHighlights(1)">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </div>
   }
 </div>

@@ -1,16 +1,27 @@
-import { Component, input, computed, signal, effect, OnInit } from '@angular/core';
+import { Component, input, computed, signal, effect, OnInit, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Router, ActivatedRoute } from '@angular/router';
-import { switchMap, map, catchError, of, startWith } from 'rxjs';
+import { switchMap, map, catchError, of, startWith, debounceTime, distinctUntilChanged, tap, fromEvent, Subscription, throttleTime } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { ProfileApiService, ProfileDto, MediaInfoDto, CommentDto, StoryItem, StoryUser } from '../../services/profile-api.service';
 import { HighlightsApiService, Highlight } from '../../services/highlights-api.service';
+import { SearchApiService, SearchUserResult, SearchResponse } from '../../services/search-api.service';
 import type { ApiError } from '../../services/api-error';
 import { ProfileHeaderComponent } from './components/profile-header/profile-header.component';
 import { ProfileHighlightsComponent } from './components/profile-highlights/profile-highlights.component';
-import { ProfilePostsGridComponent, Post } from './components/profile-posts-grid/profile-posts-grid.component';
+import { SearchInputComponent } from '../home/components/search-input/search-input.component';
+import { SearchResultsDropdownComponent } from '../home/components/search-results-dropdown/search-results-dropdown.component';
 
 type ProfileTab = 'posts' | 'reels' | 'tagged' | 'reposts';
+
+// Post type for mocked grid data
+export interface Post {
+  id: string;
+  imageUrl: string;
+  likesCount: number;
+  commentsCount: number;
+}
 
 interface ProfileMediaItem {
   code: string;
@@ -30,12 +41,26 @@ interface ProfileState {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, ProfileHeaderComponent, ProfileHighlightsComponent, ProfilePostsGridComponent],
+  imports: [
+    CommonModule,
+    ProfileHeaderComponent,
+    ProfileHighlightsComponent,
+    SearchInputComponent,
+    SearchResultsDropdownComponent
+  ],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
 })
-export class ProfileComponent implements OnInit {
-  username = input.required<string>();
+export class ProfileComponent implements OnInit, AfterViewInit, OnDestroy {
+  // Username is optional - can come from route params or be set via search
+  username = input<string>();
+
+  // Search state (signals-first approach)
+  searchTerm = signal<string>('');
+  searchResults = signal<SearchUserResult[]>([]);
+  searchError = signal<string | null>(null);
+  isSearchLoading = signal<boolean>(false);
+  private searchCache = new Map<string, SearchResponse>();
 
   // Highlights state (signals-first approach)
   highlights = signal<Highlight[]>([]);
@@ -86,15 +111,27 @@ export class ProfileComponent implements OnInit {
   reelResolvedDisplayUrl = signal<string | null>(null);
   reelResolvedLoading = signal(false);
   reelResolvedError = signal<string | null>(null);
+  reelVideoError = signal(false);
   private reelReqId = 0;
 
-  // Stories Viewer state signals
+  // Stories Viewer state signals (unified viewer for stories + highlights)
   storiesOpen = signal(false);
   stories = signal<StoryItem[]>([]);
   storyIndex = signal(0);
   storiesLoading = signal(false);
   storiesError = signal<string | null>(null);
   storiesUser = signal<StoryUser | null>(null);
+  storiesTitle = signal<string>(''); // Username or highlight title
+  
+  // Infinite scroll subscription
+  private scrollSub?: Subscription;
+  
+  // Computed current story item
+  currentStory = computed(() => {
+    const items = this.stories();
+    const index = this.storyIndex();
+    return items[index] || null;
+  });
 
   // Computed signals for active grid
   activeGridItems = computed(() => {
@@ -116,8 +153,13 @@ export class ProfileComponent implements OnInit {
 
   private profileState = toSignal(
     this.username$.pipe(
-      switchMap((username) =>
-        this.profileApi.getProfile(username).pipe(
+      switchMap((username) => {
+        // Don't fetch if username is undefined/null
+        if (!username) {
+          return of({ data: null, loading: false, error: null });
+        }
+        
+        return this.profileApi.getProfile(username).pipe(
           map(
             (data): ProfileState => ({
               data,
@@ -136,8 +178,8 @@ export class ProfileComponent implements OnInit {
             });
           }),
           startWith({ data: null, loading: true, error: null })
-        )
-      )
+        );
+      })
     ),
     { initialValue: { data: null, loading: true, error: null } }
   );
@@ -150,9 +192,63 @@ export class ProfileComponent implements OnInit {
   constructor(
     private readonly profileApi: ProfileApiService,
     private readonly highlightsApi: HighlightsApiService,
+    private readonly searchApi: SearchApiService,
     private readonly router: Router,
     private readonly route: ActivatedRoute
   ) {
+    // Set up reactive search with debouncing and caching
+    const searchTerm$ = toObservable(this.searchTerm);
+    
+    searchTerm$.pipe(
+      debounceTime(250),
+      distinctUntilChanged(),
+      switchMap((term) => {
+        const trimmedTerm = term?.trim() || '';
+        
+        // Clear results if query is too short
+        if (trimmedTerm.length < 2) {
+          this.searchResults.set([]);
+          this.searchError.set(null);
+          this.isSearchLoading.set(false);
+          return of(null);
+        }
+        
+        // Check cache first
+        const cached = this.searchCache.get(trimmedTerm.toLowerCase());
+        if (cached) {
+          this.searchResults.set(cached.users);
+          this.searchError.set(null);
+          this.isSearchLoading.set(false);
+          return of(null);
+        }
+        
+        // Show loading
+        this.isSearchLoading.set(true);
+        this.searchError.set(null);
+        
+        return this.searchApi.search(trimmedTerm).pipe(
+          tap((response) => {
+            if (response && response.users) {
+              this.searchCache.set(trimmedTerm.toLowerCase(), response);
+            }
+          }),
+          catchError((error: ApiError) => {
+            const errorMessage = error.status === 429
+              ? 'Rate limit exceeded. Please wait a second and try again.'
+              : 'Failed to load data. Please try again.';
+            this.searchError.set(errorMessage);
+            this.searchResults.set([]);
+            return of(null);
+          })
+        );
+      })
+    ).subscribe((response) => {
+      this.isSearchLoading.set(false);
+      if (response && response.users) {
+        this.searchResults.set(response.users);
+      }
+    });
+
     // Fetch highlights and load mock data when username changes
     effect(() => {
       const currentUsername = this.username();
@@ -179,6 +275,10 @@ export class ProfileComponent implements OnInit {
     });
   }
 
+  getProxyImageUrl(imageUrl: string): string {
+    return `${environment.apiBaseUrl}/proxy/image?url=${encodeURIComponent(imageUrl)}`;
+  }
+
   ngOnInit(): void {
     // Check for deep-link to post or reel
     const code = this.route.snapshot.paramMap.get('code');
@@ -191,6 +291,43 @@ export class ProfileComponent implements OnInit {
       // Reel deep-link
       this.openReelViewerByCode(code);
     }
+  }
+
+  ngAfterViewInit(): void {
+    // Set up window scroll listener for infinite scroll
+    this.scrollSub = fromEvent(window, 'scroll')
+      .pipe(throttleTime(200))
+      .subscribe(() => {
+        const doc = document.documentElement;
+        const remaining = doc.scrollHeight - (window.scrollY + window.innerHeight);
+        
+        // Trigger when close to bottom
+        if (remaining < 800) {
+          // Guard: only load if we have more items and aren't already loading
+          if (this.moreAvailable() && !this.isLoading()) {
+            this.loadNextPageForActiveTab();
+          }
+        }
+      });
+  }
+
+  private loadNextPageForActiveTab(): void {
+    const tab = this.selectedTab();
+    
+    if (tab === 'posts') {
+      this.loadPosts({ reset: false });
+    } else if (tab === 'reels') {
+      this.loadReels({ reset: false });
+    } else if (tab === 'tagged') {
+      this.loadTagged({ reset: false });
+    } else if (tab === 'reposts') {
+      this.loadReposts({ reset: false });
+    }
+  }
+
+  ngOnDestroy(): void {
+    // Clean up scroll subscription
+    this.scrollSub?.unsubscribe();
   }
 
   private loadMockedData(): void {
@@ -441,6 +578,7 @@ export class ProfileComponent implements OnInit {
         this.highlightsLoading.set(false);
       },
       error: (error: ApiError) => {
+        console.error('[fetchHighlights] Error:', error);
         const errorMessage = error.status === 502
           ? 'Unable to load highlights'
           : 'Failed to load highlights';
@@ -605,6 +743,14 @@ export class ProfileComponent implements OnInit {
   }
   
   openReelViewerByItem(item: ProfileMediaItem): void {
+    // TEMP debug log
+    console.debug('[reels] open', { 
+      code: item.code, 
+      mediaType: item.mediaType, 
+      hasVideoUrl: !!item.videoUrl, 
+      videoUrl: item.videoUrl 
+    });
+    
     // Ensure we're on reels tab
     if (this.selectedTab() !== 'reels') {
       this.setTab('reels');
@@ -617,6 +763,7 @@ export class ProfileComponent implements OnInit {
     this.reelViewerIndex.set(index);
     this.reelViewerCode.set(item.code);
     this.isReelViewerOpen.set(true);
+    this.reelVideoError.set(false);
 
     // Update URL
     const currentUsername = this.username();
@@ -648,11 +795,6 @@ export class ProfileComponent implements OnInit {
     if (index !== -1) {
       // Found it
       const item = this.items()[index];
-      console.log('[Reels Viewer]', {
-        code: item.code,
-        hasVideoUrl: !!item.videoUrl,
-        videoUrlPreview: item.videoUrl?.substring(0, 60),
-      });
       this.reelViewerIndex.set(index);
       this.reelViewerCode.set(code);
       this.isReelViewerOpen.set(true);
@@ -710,6 +852,7 @@ export class ProfileComponent implements OnInit {
     this.isReelViewerOpen.set(false);
     this.reelViewerCode.set(null);
     this.reelViewerIndex.set(-1);
+    this.reelVideoError.set(false);
     
     // Clear comments state
     this.comments.set([]);
@@ -720,6 +863,11 @@ export class ProfileComponent implements OnInit {
     // Navigate back to profile (preserve reels tab)
     const currentUsername = this.username();
     this.router.navigate(['/profile', currentUsername]);
+  }
+
+  onReelVideoError(): void {
+    console.error('[reels] video playback error');
+    this.reelVideoError.set(true);
   }
 
   async nextReel(): Promise<void> {
@@ -733,6 +881,7 @@ export class ProfileComponent implements OnInit {
       
       this.reelViewerIndex.set(nextIndex);
       this.reelViewerCode.set(nextItem.code);
+      this.reelVideoError.set(false);
 
       // Update URL
       const currentUsername = this.username();
@@ -762,6 +911,7 @@ export class ProfileComponent implements OnInit {
         const nextItem = allItemsAfterLoad[newIndex];
         this.reelViewerIndex.set(newIndex);
         this.reelViewerCode.set(nextItem.code);
+        this.reelVideoError.set(false);
 
         const currentUsername = this.username();
         this.router.navigate(['/profile', currentUsername, 'reel', nextItem.code], {
@@ -791,6 +941,7 @@ export class ProfileComponent implements OnInit {
       
       this.reelViewerIndex.set(prevIndex);
       this.reelViewerCode.set(prevItem.code);
+      this.reelVideoError.set(false);
 
       // Update URL
       const currentUsername = this.username();
@@ -828,6 +979,7 @@ export class ProfileComponent implements OnInit {
     this.storiesLoading.set(true);
     this.storiesError.set(null);
     this.storyIndex.set(0);
+    this.storiesTitle.set(currentUsername);
 
     try {
       const response = await this.profileApi.getUserStories(currentUsername);
@@ -836,7 +988,7 @@ export class ProfileComponent implements OnInit {
       this.storiesLoading.set(false);
 
       if (response.items.length === 0) {
-        this.storiesError.set('No stories available');
+        this.storiesError.set('No active stories');
       }
     } catch (error) {
       this.storiesError.set('Failed to load stories');
@@ -851,6 +1003,7 @@ export class ProfileComponent implements OnInit {
     this.storyIndex.set(0);
     this.storiesUser.set(null);
     this.storiesError.set(null);
+    this.storiesTitle.set('');
   }
 
   nextStory(): void {
@@ -873,11 +1026,71 @@ export class ProfileComponent implements OnInit {
     }
   }
 
-  // Computed signal for current story
-  currentStory = computed(() => {
-    const index = this.storyIndex();
-    const allStories = this.stories();
-    return index >= 0 && index < allStories.length ? allStories[index] : null;
-  });
+  async openHighlight(highlightId: string, title: string): Promise<void> {
+    this.storiesOpen.set(true);
+    this.storiesLoading.set(true);
+    this.storiesError.set(null);
+    this.storyIndex.set(0);
+    this.storiesTitle.set(title);
+
+    try {
+      const response = await this.highlightsApi.getHighlightItems(highlightId).toPromise();
+      if (response) {
+        // Check if highlight is unavailable (upstream error)
+        if (response.unavailable) {
+          this.storiesError.set('This highlight is temporarily unavailable.');
+          this.stories.set([]);
+          this.storiesLoading.set(false);
+          return;
+        }
+
+        // Set items and user
+        this.stories.set(response.items);
+        if (response.user) {
+          this.storiesUser.set(response.user);
+        }
+        this.storiesLoading.set(false);
+
+        // Check for empty items (but not unavailable)
+        if (response.items.length === 0) {
+          this.storiesError.set('No items in this highlight');
+        }
+      }
+    } catch (error) {
+      this.storiesError.set('This highlight is temporarily unavailable.');
+      this.storiesLoading.set(false);
+      console.error('[openHighlight] Error:', error);
+    }
+  }
+
+  handleStoriesKeyboard(event: KeyboardEvent): void {
+    if (event.key === 'ArrowRight') {
+      this.nextStory();
+    } else if (event.key === 'ArrowLeft') {
+      this.prevStory();
+    } else if (event.key === 'Escape') {
+      this.closeStories();
+    }
+  }
+
+  // Search methods
+  onSearchTermChange(value: string): void {
+    this.searchTerm.set(value);
+  }
+
+  onSelectUsername(username: string): void {
+    // Clear search input and close dropdown
+    this.searchTerm.set('');
+    this.searchResults.set([]);
+    this.searchError.set(null);
+    
+    // Navigate to profile page
+    this.router.navigate(['/profile', username]);
+  }
+
+  onCloseDropdown(): void {
+    this.searchResults.set([]);
+    this.searchError.set(null);
+  }
 }
 

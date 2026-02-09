@@ -1,4 +1,34 @@
-@if (loading()) {
+<!-- Search Header (always visible) -->
+<div class="search-header">
+  <div class="search-container">
+    <div class="search-wrapper">
+      <app-search-input 
+        [value]="searchTerm()" 
+        (valueChange)="onSearchTermChange($event)"
+      />
+      
+      <app-search-results-dropdown 
+        [isOpen]="searchTerm().trim().length >= 2" 
+        [results]="searchResults()"
+        [isLoading]="isSearchLoading()"
+        [error]="searchError()"
+        (select)="onSelectUsername($event)"
+        (close)="onCloseDropdown()"
+      />
+    </div>
+  </div>
+</div>
+
+<!-- Profile Content -->
+@if (!username()) {
+  <!-- Idle state - no profile selected -->
+  <div class="idle-state">
+    <div class="idle-content">
+      <h1 class="idle-title">Instagram Profile Viewer</h1>
+      <p class="idle-subtitle">Search for a user to view their profile</p>
+    </div>
+  </div>
+} @else if (loading()) {
   <div class="loading">
     Loading profile...
   </div>
@@ -7,18 +37,13 @@
     {{ error() }}
   </div>
 } @else if (profile()) {
-  <div class="profile-container">
-    <app-profile-header [profile]="profile()!" />
-    
-    <!-- Stories button -->
-    <div style="display: flex; justify-content: center; margin: 20px 0;">
-      <button 
-        class="stories-button"
-        (click)="openStories()"
-        type="button">
-        View Stories
-      </button>
-    </div>
+  <div class="page">
+    <div class="profile-top-shell">
+      <div class="profile-container">
+        <app-profile-header 
+          [profile]="profile()!" 
+          (profilePictureClick)="openStories()" 
+        />
     
     <!-- Highlights section -->
     <app-profile-highlights
@@ -26,61 +51,61 @@
       [isLoading]="highlightsLoading()"
       [error]="highlightsError()"
       (retry)="retryHighlights()"
+      (highlightClick)="openHighlight($event.id, $event.title)"
     />
+      </div>
+    </div>
     
-    <div class="tabs">
+    <div class="grid-shell">
+    <div class="ig-tabs">
       <button 
-        class="tab" 
-        [class.active]="selectedTab() === 'posts'"
+        class="ig-tab" 
+        [class.is-active]="selectedTab() === 'posts'"
         (click)="setTab('posts')"
         type="button"
         aria-label="Posts">
-        <svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
           <rect x="3" y="3" width="7" height="7"/>
           <rect x="14" y="3" width="7" height="7"/>
           <rect x="3" y="14" width="7" height="7"/>
           <rect x="14" y="14" width="7" height="7"/>
         </svg>
-        <span class="tab-label">Posts</span>
       </button>
       
       <button 
-        class="tab" 
-        [class.active]="selectedTab() === 'reels'"
+        class="ig-tab" 
+        [class.is-active]="selectedTab() === 'reels'"
         (click)="setTab('reels')"
         type="button"
         aria-label="Reels">
-        <svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
           <path d="M2.5 5.5A1.5 1.5 0 014 4h16a1.5 1.5 0 011.5 1.5v13a1.5 1.5 0 01-1.5 1.5H4a1.5 1.5 0 01-1.5-1.5v-13zm2 0v13H20v-13H4.5z"/>
           <path d="M9.5 8.5l6 4-6 4v-8z"/>
         </svg>
-        <span class="tab-label">Reels</span>
       </button>
       
       <button 
-        class="tab" 
-        [class.active]="selectedTab() === 'tagged'"
+        class="ig-tab" 
+        [class.is-active]="selectedTab() === 'tagged'"
         (click)="setTab('tagged')"
         type="button"
         aria-label="Tagged">
-        <svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
           <path d="M10.5 8.5a2 2 0 114 0 2 2 0 01-4 0z"/>
           <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 1v14h14V5H5z"/>
           <path d="M12.5 13.5a3 3 0 00-3 3v2h6v-2a3 3 0 00-3-3z"/>
         </svg>
-        <span class="tab-label">Tagged</span>
       </button>
       
       <button 
-        class="tab" 
-        [class.active]="selectedTab() === 'reposts'"
+        class="ig-tab" 
+        [class.is-active]="selectedTab() === 'reposts'"
         (click)="setTab('reposts')"
         type="button"
         aria-label="Reposts">
-        <svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
           <path d="M19 7v4H5.83l3.58-3.59L8 6l-6 6 6 6 1.41-1.41L5.83 13H21V7h-2z"/>
         </svg>
-        <span class="tab-label">Reposts</span>
       </button>
     </div>
     
@@ -100,35 +125,27 @@
           Loading posts...
         </div>
       } @else if (items().length > 0) {
-        <div class="posts-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 20px;">
+        <div class="posts-grid ig-grid">
           @for (item of items(); track item.code) {
             <div 
-              class="post-item" 
-              style="position: relative; aspect-ratio: 1; background: #fafafa; cursor: pointer;"
+              class="post-item ig-tile"
               (click)="openPost(item.code)">
               <img 
-                [src]="item.displayUrl" 
+                [src]="getProxyImageUrl(item.displayUrl)" 
                 [alt]="'Post ' + item.code"
                 style="width: 100%; height: 100%; object-fit: cover;">
             </div>
           }
         </div>
         
-        @if (moreAvailable() && !isLoading()) {
-          <div style="text-align: center; margin: 32px 0;">
-            <button 
-              style="padding: 12px 24px; background: #0095f6; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;"
-              (click)="loadMore()">
-              Load More
-            </button>
-          </div>
-        }
-        
         @if (isLoading() && items().length > 0) {
           <div style="text-align: center; margin: 32px 0; color: #8e8e8e; font-size: 14px;">
             Loading more...
           </div>
         }
+        
+        <!-- Infinite scroll sentinel -->
+        <div #infiniteSentinel class="infinite-sentinel"></div>
       } @else {
         <div class="empty-state" style="padding: 40px 20px; text-align: center; color: #8e8e8e;">
           No posts yet
@@ -149,14 +166,13 @@
           Loading reels...
         </div>
       } @else if (items().length > 0) {
-        <div class="posts-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 20px;">
+        <div class="posts-grid ig-grid">
           @for (item of items(); track item.code) {
             <div 
-              class="post-item reel-item" 
-              style="position: relative; aspect-ratio: 1; background: #fafafa; cursor: pointer;"
+              class="post-item ig-tile reel-item"
               (click)="openReelViewerByItem(item)">
               <img 
-                [src]="item.displayUrl" 
+                [src]="getProxyImageUrl(item.displayUrl)" 
                 [alt]="'Reel ' + item.code"
                 style="width: 100%; height: 100%; object-fit: cover;">
               <!-- Video overlay indicator -->
@@ -169,21 +185,14 @@
           }
         </div>
         
-        @if (moreAvailable() && !isLoading()) {
-          <div style="text-align: center; margin: 32px 0;">
-            <button 
-              style="padding: 12px 24px; background: #0095f6; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;"
-              (click)="loadMore()">
-              Load More
-            </button>
-          </div>
-        }
-        
         @if (isLoading() && items().length > 0) {
           <div style="text-align: center; margin: 32px 0; color: #8e8e8e; font-size: 14px;">
             Loading more...
           </div>
         }
+        
+        <!-- Infinite scroll sentinel -->
+        <div #infiniteSentinel class="infinite-sentinel"></div>
       } @else {
         <div class="empty-state" style="padding: 40px 20px; text-align: center; color: #8e8e8e;">
           No reels yet
@@ -204,35 +213,27 @@
           Loading tagged posts...
         </div>
       } @else if (items().length > 0) {
-        <div class="posts-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 20px;">
+        <div class="posts-grid ig-grid">
           @for (item of items(); track item.code) {
             <div 
-              class="post-item" 
-              style="position: relative; aspect-ratio: 1; background: #fafafa; cursor: pointer;"
+              class="post-item ig-tile"
               (click)="openPost(item.code)">
               <img 
-                [src]="item.displayUrl" 
+                [src]="getProxyImageUrl(item.displayUrl)" 
                 [alt]="'Tagged post ' + item.code"
                 style="width: 100%; height: 100%; object-fit: cover;">
             </div>
           }
         </div>
         
-        @if (moreAvailable() && !isLoading()) {
-          <div style="text-align: center; margin: 32px 0;">
-            <button 
-              style="padding: 12px 24px; background: #0095f6; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;"
-              (click)="loadMore()">
-              Load More
-            </button>
-          </div>
-        }
-        
         @if (isLoading() && items().length > 0) {
           <div style="text-align: center; margin: 32px 0; color: #8e8e8e; font-size: 14px;">
             Loading more...
           </div>
         }
+        
+        <!-- Infinite scroll sentinel -->
+        <div #infiniteSentinel class="infinite-sentinel"></div>
       } @else {
         <div class="empty-state" style="padding: 40px 20px; text-align: center; color: #8e8e8e;">
           No tagged posts yet
@@ -253,41 +254,34 @@
           Loading reposts...
         </div>
       } @else if (items().length > 0) {
-        <div class="posts-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 20px;">
+        <div class="posts-grid ig-grid">
           @for (item of items(); track item.code) {
             <div 
-              class="post-item" 
-              style="position: relative; aspect-ratio: 1; background: #fafafa; cursor: pointer;"
+              class="post-item ig-tile"
               (click)="openPost(item.code)">
               <img 
-                [src]="item.displayUrl" 
+                [src]="getProxyImageUrl(item.displayUrl)" 
                 [alt]="'Repost ' + item.code"
                 style="width: 100%; height: 100%; object-fit: cover;">
             </div>
           }
         </div>
         
-        @if (moreAvailable() && !isLoading()) {
-          <div style="text-align: center; margin: 32px 0;">
-            <button 
-              style="padding: 12px 24px; background: #0095f6; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;"
-              (click)="loadMore()">
-              Load More
-            </button>
-          </div>
-        }
-        
         @if (isLoading() && items().length > 0) {
           <div style="text-align: center; margin: 32px 0; color: #8e8e8e; font-size: 14px;">
             Loading more...
           </div>
         }
+        
+        <!-- Infinite scroll sentinel -->
+        <div #infiniteSentinel class="infinite-sentinel"></div>
       } @else {
         <div class="empty-state" style="padding: 40px 20px; text-align: center; color: #8e8e8e;">
           No reposts yet
         </div>
       }
     }
+    </div>
   </div>
 }
 
@@ -449,18 +443,29 @@
         <div class="modal-content">
           <!-- Left: Media -->
           <div class="modal-media">
-            @if (reelResolvedVideoUrl()) {
+            @if (reelVideoError()) {
+              <div style="color: #8e8e8e; text-align: center; padding: 40px 20px;">
+                <p style="margin: 0 0 8px 0;">Video temporarily unavailable.</p>
+                @if (currentReelItem()?.displayUrl) {
+                  <img 
+                    [src]="getProxyImageUrl(currentReelItem()!.displayUrl)"
+                    [alt]="'Reel thumbnail ' + currentReelItem()!.code"
+                    style="max-width: 100%; max-height: 400px; margin-top: 16px; object-fit: contain;">
+                }
+              </div>
+            } @else if (currentReelItem()?.videoUrl || reelResolvedVideoUrl()) {
               <video 
-                [src]="reelResolvedVideoUrl()!"
+                [src]="currentReelItem()?.videoUrl || reelResolvedVideoUrl()!"
                 controls
                 autoplay
                 muted
                 playsinline
+                (error)="onReelVideoError()"
                 style="width: 100%; height: 100%; object-fit: contain;">
               </video>
             } @else if (reelResolvedDisplayUrl() || currentReelItem()?.displayUrl) {
               <img 
-                [src]="reelResolvedDisplayUrl() || currentReelItem()!.displayUrl"
+                [src]="getProxyImageUrl(reelResolvedDisplayUrl() || currentReelItem()!.displayUrl)"
                 [alt]="'Reel ' + currentReelItem()!.code"
                 style="width: 100%; height: 100%; object-fit: contain;">
             } @else {
@@ -536,7 +541,7 @@
 
 <!-- Stories Viewer -->
 @if (storiesOpen()) {
-  <div class="stories-overlay" (click)="closeStories()">
+  <div class="stories-overlay" (click)="closeStories()" (keydown)="handleStoriesKeyboard($event)" tabindex="0">
     <div class="stories-container" (click)="$event.stopPropagation()">
       <!-- Close button -->
       <button class="stories-close" (click)="closeStories()" type="button" aria-label="Close Stories">
@@ -564,7 +569,7 @@
         @if (storiesUser()) {
           <div class="stories-user">
             <img [src]="storiesUser()!.profilePicUrl" [alt]="storiesUser()!.username" class="stories-avatar">
-            <span class="stories-username">{{ storiesUser()!.username }}</span>
+            <span class="stories-username">{{ storiesTitle() || storiesUser()!.username }}</span>
           </div>
         }
 

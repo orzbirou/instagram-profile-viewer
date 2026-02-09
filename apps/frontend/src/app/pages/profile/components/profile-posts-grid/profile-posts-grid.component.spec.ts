@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ProfilePostsGridComponent } from './profile-posts-grid.component';
+import { ProfilePostsGridComponent, Post } from './profile-posts-grid.component';
 
 describe('ProfilePostsGridComponent', () => {
   let component: ProfilePostsGridComponent;
@@ -12,6 +12,18 @@ describe('ProfilePostsGridComponent', () => {
 
     fixture = TestBed.createComponent(ProfilePostsGridComponent);
     component = fixture.componentInstance;
+    
+    // Set required input before detectChanges
+    const mockPosts: Post[] = [
+      {
+        id: 'post1',
+        imageUrl: 'https://example.com/post1.jpg',
+        likesCount: 100,
+        commentsCount: 10
+      }
+    ];
+    fixture.componentRef.setInput('posts', mockPosts);
+    
     fixture.detectChanges();
   });
 

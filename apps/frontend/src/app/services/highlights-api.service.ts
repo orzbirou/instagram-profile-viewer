@@ -16,6 +16,28 @@ export interface HighlightsResponse {
   highlights: Highlight[];
 }
 
+export interface StoryItem {
+  id: string;
+  mediaType: number;
+  imageUrl: string;
+  videoUrl?: string;
+  takenAt: number;
+  expiringAt: number;
+}
+
+export interface StoryUser {
+  username: string;
+  profilePicUrl: string;
+}
+
+export interface StoriesResponse {
+  status?: string;
+  user?: StoryUser;
+  items: StoryItem[];
+  unavailable?: boolean;
+  reason?: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -29,6 +51,22 @@ export class HighlightsApiService {
     
     return this.http
       .get<HighlightsResponse>(fullUrl)
+      .pipe(catchError(this.handleError));
+  }
+
+  getStories(username: string): Observable<StoriesResponse> {
+    const fullUrl = `${this.apiBaseUrl}/profile/${username}/stories`;
+    
+    return this.http
+      .get<StoriesResponse>(fullUrl)
+      .pipe(catchError(this.handleError));
+  }
+
+  getHighlightItems(highlightId: string): Observable<StoriesResponse> {
+    const fullUrl = `${this.apiBaseUrl}/highlights/${highlightId}/items`;
+    
+    return this.http
+      .get<StoriesResponse>(fullUrl)
       .pipe(catchError(this.handleError));
   }
 

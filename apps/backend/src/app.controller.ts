@@ -19,8 +19,8 @@ import {
 import { UserPostsResponseDto, UserPostItemDto } from './dto/user-posts.dto';
 import { MediaInfoDto, MediaInfoCarouselItemDto } from './dto/media-info.dto';
 import { MediaCommentsResponseDto, CommentDto } from './dto/media-comments.dto';
-import { UserStoriesResponseDto, StoryItemDto, StoryUserDto } from './dto/stories.dto';
-import { ImaiClient } from './imai/imai.client';
+import { UserStoriesResponseDto, StoryItemDto, StoryUserDto, HighlightItemsResponseDto } from './dto/stories.dto';
+import { ImaiClient, ImaiUpstreamError } from './imai/imai.client';
 
 /**
  * Main API Controller
@@ -136,52 +136,152 @@ export class AppController {
   @Get('profile/:username/highlights')
   async getHighlights(
     @Param('username') username: string,
-  ): Promise<{ highlights: any[] }> {
-    // Mocked highlights data (UI-only implementation)
-    // TODO: Replace with real API call when backend supports highlights
-    const mockedHighlights = [
-      { id: 'h1', title: 'Trips', coverUrl: null, itemsCount: 5 },
-      { id: 'h2', title: 'Food', coverUrl: null, itemsCount: 8 },
-      { id: 'h3', title: 'Work', coverUrl: null, itemsCount: 3 },
-      { id: 'h4', title: 'Fitness', coverUrl: null, itemsCount: 12 },
-      { id: 'h5', title: 'Music', coverUrl: null, itemsCount: 6 },
-    ];
-
-    return { highlights: mockedHighlights };
-  }
-
-  @Get('profile/:username/stories')
-  async getUserStories(
-    @Param('username') username: string,
-  ): Promise<UserStoriesResponseDto> {
+    @Query('debug') debug?: string,
+  ): Promise<{ highlights: any[]; debug?: { input: { username: string; path: string; query: string }; raw: unknown; error?: string } }> {
     try {
       // Validate username
       if (!username || username.trim().length === 0) {
         throw new BadRequestException('Username is required');
       }
 
+      const trimmedUsername = username.trim();
+      const isDev = process.env.NODE_ENV !== 'production';
+
       // Call IMAI API
-      const response = await this.imaiClient.getUserStories(username.trim());
+      const response = await this.imaiClient.getInstagramHighlights(trimmedUsername);
 
-      console.log('[getUserStories] Response structure:', JSON.stringify(response).substring(0, 500));
+      // Debug mode: return raw response (dev only)
+      if (debug === '1' && isDev) {
+        return {
+          highlights: [],
+          debug: {
+            input: {
+              username: trimmedUsername,
+              path: 'raw/ig/user/highlights/',
+              query: `url=${trimmedUsername}`,
+            },
+            raw: response as unknown,
+          },
+        };
+      }
 
-      // Extract user and items from response - handle multiple possible structures
-      const reel = response.reel || response.reels_media?.[0] || response;
+      // Map highlights to expected format (response.tray is the highlights array)
+      const tray = response.tray || response.highlights || [];
+      const highlights = tray
+        .map((highlight: any) => {
+          // Extract highlight ID (must be present)
+          const id = highlight.id || highlight.strong_id__;
+          if (!id) {
+            // Skip highlights without ID in dev mode
+            if (isDev) {
+              console.warn('[getHighlights] Skipping highlight without ID:', highlight);
+            }
+            return null;
+          }
+
+          // Extract cover URL from cropped_image_version (preferred) or fallback
+          const coverUrl = 
+            highlight.cover_media?.cropped_image_version?.url ||
+            highlight.cover_media?.image_versions2?.candidates?.[0]?.url ||
+            '';
+
+          return {
+            id: String(id),
+            title: highlight.title || 'Highlight',
+            coverUrl,
+            itemsCount: highlight.media_count || 0,
+          };
+        })
+        .filter((h): h is { id: string; title: string; coverUrl: string; itemsCount: number } => h !== null);
+
+      return { highlights };
+    } catch (error) {
+      // In debug mode, return the error too
+      const isDev = process.env.NODE_ENV !== 'production';
+      const trimmedUsername = username?.trim() || '';
       
-      if (!reel || (!reel.user && !reel.owner)) {
-        // If no stories, return empty array instead of 404
+      if (debug === '1' && isDev) {
+        return {
+          highlights: [],
+          debug: {
+            input: {
+              username: trimmedUsername,
+              path: 'raw/ig/user/highlights/',
+              query: `url=${trimmedUsername}`,
+            },
+            raw: null,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        };
+      }
+      
+      // Check if it's a not_found error - treat as empty highlights (200)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('not_found')) {
+        return { highlights: [] };
+      }
+      
+      // For other errors (5xx, timeouts), throw 502
+      throw new HttpException(
+        {
+          message: 'Failed to fetch highlights',
+          details: errorMessage,
+        },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
+
+  @Get('highlights/:highlightId/items')
+  async getHighlightItems(
+    @Param('highlightId') highlightId: string,
+    @Query('debug') debug?: string,
+  ): Promise<HighlightItemsResponseDto | { status: string; user: any; items: any[]; debug?: any }> {
+    try {
+      // Validate highlightId format
+      if (!highlightId || highlightId.trim().length === 0) {
+        throw new BadRequestException('Invalid highlight id');
+      }
+
+      const trimmedId = highlightId.trim();
+      const isDev = process.env.NODE_ENV !== 'production';
+
+      // Call IMAI API
+      const response = await this.imaiClient.getHighlightItems(trimmedId);
+
+      // Debug mode: return raw response (dev only)
+      if (debug === '1' && isDev) {
         return {
           status: 'ok',
+          user: {},
+          items: [],
+          debug: {
+            input: {
+              highlightId: trimmedId,
+              path: 'raw/ig/highlight/info/',
+              query: `highlight_id=${trimmedId}`,
+            },
+            raw: response as unknown,
+          },
+        };
+      }
+
+      // Extract reel from response
+      const reel = response.reel || response;
+      
+      if (!reel || (!reel.user && !reel.owner)) {
+        // If no items, return empty array
+        return {
+          items: [],
           user: {
-            username: username,
+            username: '',
             profilePicUrl: '',
           },
-          items: [],
         };
       }
 
       const user: StoryUserDto = {
-        username: reel.user?.username || reel.owner?.username || username,
+        username: reel.user?.username || reel.owner?.username || '',
         profilePicUrl: reel.user?.profile_pic_url || reel.owner?.profile_pic_url || '',
       };
 
@@ -195,11 +295,190 @@ export class AppController {
       }));
 
       return {
+        items,
+        user,
+      };
+    } catch (error) {
+      // Debug mode error handling
+      const isDev = process.env.NODE_ENV !== 'production';
+      const trimmedId = highlightId?.trim() || '';
+      
+      if (debug === '1' && isDev) {
+        // Check if it's our custom ImaiUpstreamError with detailed info
+        if (error instanceof ImaiUpstreamError) {
+          return {
+            status: 'error',
+            user: {},
+            items: [],
+            debug: {
+              input: {
+                highlightId: trimmedId,
+                path: 'raw/ig/highlight/info/',
+                query: `highlight_id=${trimmedId}`,
+              },
+              error: {
+                message: error.message,
+                upstreamStatus: error.upstreamStatus,
+                upstreamBody: error.upstreamBody,
+                upstreamPath: error.upstreamPath,
+                upstreamQuery: error.upstreamQuery,
+                upstreamHeaders: error.upstreamHeaders,
+              },
+            },
+          };
+        }
+        
+        // Fallback for non-ImaiUpstreamError
+        return {
+          status: 'error',
+          user: {},
+          items: [],
+          debug: {
+            input: {
+              highlightId: trimmedId,
+              path: 'raw/ig/highlight/info/',
+              query: `highlight_id=${trimmedId}`,
+            },
+            raw: null,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        };
+      }
+
+      // Handle BadRequestException (invalid format) - let it throw as 400
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      // For all other errors (ImaiUpstreamError, network errors, etc.)
+      // Return 200 with unavailable flag instead of throwing 502
+      console.error('[getHighlightItems] Upstream error, returning unavailable response:', error);
+      
+      return {
+        items: [],
+        unavailable: true,
+        reason: 'temporarily_unavailable',
+      };
+    }
+  }
+
+  @Get('profile/:username/stories')
+  async getUserStories(
+    @Param('username') username: string,
+    @Query('debug') debug?: string,
+  ): Promise<UserStoriesResponseDto | any> {
+    const isDev = process.env.NODE_ENV !== 'production';
+    const debugMode = isDev && debug === '1';
+    
+    try {
+      // Validate username
+      if (!username || username.trim().length === 0) {
+        throw new BadRequestException('Username is required');
+      }
+
+      // Call IMAI API
+      const raw = await this.imaiClient.getUserStories(username.trim());
+
+      // DEV-only logging: show response shape
+      if (isDev) {
+        console.debug('[stories] raw keys', Object.keys(raw));
+        console.debug('[stories] has reel', !!raw.reel, 'reel.items', raw.reel?.items?.length, 'top items', raw.items?.length);
+      }
+
+      // Extract user and items from response - use raw.reel.items (not raw.items)
+      const reel = raw.reel || raw.reels_media?.[0];
+      
+      if (!reel || (!reel.user && !reel.owner)) {
+        // If no stories, return empty array instead of 404
+        const emptyResponse = {
+          status: 'ok',
+          user: {
+            username: username,
+            profilePicUrl: '',
+          },
+          items: [],
+        };
+        
+        if (debugMode) {
+          return {
+            ...emptyResponse,
+            debug: {
+              input: { username, path: `/profile/${username}/stories`, query: { debug } },
+              rawKeys: Object.keys(raw),
+              raw,
+            },
+          };
+        }
+        
+        return emptyResponse;
+      }
+
+      const user: StoryUserDto = {
+        username: reel.user?.username || reel.owner?.username || username,
+        profilePicUrl: reel.user?.profile_pic_url || reel.owner?.profile_pic_url || '',
+      };
+
+      // Map items with improved video URL extraction
+      const items: StoryItemDto[] = (reel.items || []).map((item: any) => {
+        // Try multiple paths for video URL (use first non-empty)
+        const videoUrl = 
+          item.video_url || 
+          item.video_versions?.[0]?.url || 
+          item.media?.video_versions?.[0]?.url || 
+          null;
+        
+        // Try multiple paths for image URL
+        const imageUrl = 
+          item.display_url || 
+          item.image_versions2?.candidates?.[0]?.url || 
+          '';
+        
+        return {
+          id: String(item.id || item.pk || ''),
+          mediaType: item.media_type || 1,
+          imageUrl,
+          videoUrl,
+          takenAt: item.taken_at || 0,
+          expiringAt: item.expiring_at || 0,
+        };
+      });
+
+      const response = {
         status: 'ok',
         user,
         items,
       };
+      
+      // Include debug info in DEV mode
+      if (debugMode) {
+        return {
+          ...response,
+          debug: {
+            input: { username, path: `/profile/${username}/stories`, query: { debug } },
+            rawKeys: Object.keys(raw),
+            raw,
+          },
+        };
+      }
+      
+      return response;
     } catch (error) {
+      // In DEV mode with debug=1, return 200 with error details
+      if (debugMode) {
+        return {
+          items: [],
+          unavailable: true,
+          debug: {
+            input: { username, path: `/profile/${username}/stories`, query: { debug } },
+            error: {
+              message: error?.message || 'Unknown error',
+              name: error?.name,
+              stack: isDev ? error?.stack : undefined,
+            },
+          },
+        };
+      }
+      
       if (error instanceof HttpException) {
         throw error;
       }
@@ -213,9 +492,34 @@ export class AppController {
   }
 
   @Get('profile/:username')
-  async getProfile(@Param('username') username: string): Promise<ProfileDto> {
+  async getProfile(
+    @Param('username') username: string,
+    @Query('debug') debug?: string,
+  ): Promise<ProfileDto | { profile: ProfileDto; debug: { raw: unknown } }> {
     try {
       const response = await this.imaiClient.getInstagramUserInfo(username);
+
+      // Debug mode (dev only)
+      const isDev = process.env.NODE_ENV !== 'production';
+      if (debug === '1' && isDev) {
+        const profileDto: ProfileDto = {
+          username: response.user.username,
+          fullName: response.user.full_name,
+          bio: response.user.biography,
+          profilePicUrl:
+            response.user.profile_pic_url_hd ?? response.user.profile_pic_url,
+          posts: response.user.media_count,
+          followers: response.user.follower_count,
+          following: response.user.following_count,
+        };
+
+        return {
+          profile: profileDto,
+          debug: {
+            raw: response as unknown,
+          },
+        };
+      }
 
       // Map upstream response to ProfileDto
       const profileDto: ProfileDto = {
@@ -285,7 +589,11 @@ export class AppController {
   async getUserReels(
     @Param('username') username: string,
     @Query('after') after?: string,
-  ): Promise<UserPostsResponseDto> {
+    @Query('debug') debug?: string,
+  ): Promise<UserPostsResponseDto | any> {
+    const isDev = process.env.NODE_ENV !== 'production';
+    const debugMode = isDev && debug === '1';
+    
     try {
       // Validate username
       if (!username || username.trim().length === 0) {
@@ -293,28 +601,78 @@ export class AppController {
       }
 
       // Call IMAI API
-      const response = await this.imaiClient.getUserReels(username.trim(), after);
+      const raw = await this.imaiClient.getUserReels(username.trim(), after);
+
+      // DEV-only logging: show response shape
+      if (isDev) {
+        console.debug('[reels] raw keys', Object.keys(raw));
+        console.debug('[reels] items count', raw.items?.length, 'first item keys', raw.items?.[0] ? Object.keys(raw.items[0]).slice(0, 10) : 'none');
+      }
 
       // Map to slim DTO - reels may have nested media structure
-      const items: UserPostItemDto[] = (response.items || []).map((item: any) => {
+      const items: UserPostItemDto[] = (raw.items || []).map((item: any) => {
         const media = item.media || item;
+        
+        // Try multiple paths for video URL (use first non-empty)
+        const videoUrl = 
+          media.video_url || 
+          media.video_versions?.[0]?.url || 
+          media.video_versions?.find((v: any) => v.url)?.url || 
+          null;
+        
+        // Try multiple paths for image URL
+        const displayUrl = 
+          media.display_url || 
+          media.image_versions2?.candidates?.[0]?.url || 
+          '';
+        
         return {
           code: media.code || media.pk || item.code || item.pk,
-          displayUrl: media.image_versions2?.candidates?.[0]?.url || media.display_url || '',
+          displayUrl,
           mediaType: media.media_type || 2, // Default to video (2) for reels
           likeCount: media.like_count,
           commentCount: media.comment_count,
-          videoUrl: media.video_url || media.video_versions?.[0]?.url || null,
+          videoUrl,
         };
       });
 
-      return {
+      const response = {
         status: 'ok',
         items,
-        endCursor: response.end_cursor,
-        moreAvailable: response.more_available || false,
+        endCursor: raw.end_cursor,
+        moreAvailable: raw.more_available || false,
       };
+      
+      // Include debug info in DEV mode
+      if (debugMode) {
+        return {
+          ...response,
+          debug: {
+            input: { username, path: `/profile/${username}/reels`, query: { after, debug } },
+            rawKeys: Object.keys(raw),
+            raw,
+          },
+        };
+      }
+      
+      return response;
     } catch (error) {
+      // In DEV mode with debug=1, return 200 with error details
+      if (debugMode) {
+        return {
+          items: [],
+          unavailable: true,
+          debug: {
+            input: { username, path: `/profile/${username}/reels`, query: { after, debug } },
+            error: {
+              message: error?.message || 'Unknown error',
+              name: error?.name,
+              stack: isDev ? error?.stack : undefined,
+            },
+          },
+        };
+      }
+      
       throw new HttpException(
         {
           message: 'Failed to fetch user reels',
@@ -380,11 +738,15 @@ export class AppController {
         throw new BadRequestException('Username is required');
       }
 
+      const isDev = process.env.NODE_ENV !== 'production';
+
       // Call IMAI API
       const response = await this.imaiClient.getUserRepostedFeed(username.trim(), after);
 
-      // Diagnostic log
-      console.log('[reposts]', username, 'items=', (response.items||[]).length, 'sampleKeys=', response.items?.[0] ? Object.keys(response.items[0]) : []);
+      // Diagnostic log (dev only)
+      if (isDev) {
+        console.log('[reposts]', username, 'items=', (response.items||[]).length, 'sampleKeys=', response.items?.[0] ? Object.keys(response.items[0]) : []);
+      }
 
       // Map to slim DTO - handle nested media structure
       const srcItems = Array.isArray(response?.items) ? response.items : [];

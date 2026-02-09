@@ -1,0 +1,178 @@
+// Stories Viewer Styles
+.stories-button {
+  background: #0095f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: #1877f2;
+  }
+
+  &:active {
+    background: #0070cc;
+  }
+}
+
+.stories-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+.stories-container {
+  position: relative;
+  width: 100%;
+  max-width: 450px;
+  height: 100%;
+  max-height: 800px;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+
+.stories-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  svg {
+    color: white;
+  }
+}
+
+.stories-loading,
+.stories-error {
+  color: white;
+  text-align: center;
+  padding: 40px;
+  font-size: 16px;
+
+  button {
+    margin-top: 16px;
+    background: white;
+    color: black;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
+
+.stories-progress {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+}
+
+.stories-progress-bar {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+
+  &.completed, &.active {
+    background: white;
+  }
+}
+
+.stories-user {
+  position: absolute;
+  top: 20px;
+  left: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stories-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid white;
+  object-fit: cover;
+}
+
+.stories-username {
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.stories-media {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  overflow: hidden;
+}
+
+.stories-nav-left,
+.stories-nav-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.stories-nav-left {
+  left: 0;
+}
+
+.stories-nav-right {
+  right: 0;
+}
+
+@media (max-width: 768px) {
+  .stories-container {
+    max-width: 100%;
+    max-height: 100vh;
+  }
+
+  .stories-close {
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+  }
+}

@@ -3,6 +3,11 @@
     class="profile-picture"
     [src]="'http://localhost:3000/proxy/image?url=' + encodeURIComponent(profile().profilePicUrl)" 
     [alt]="profile().username"
+    role="button"
+    tabindex="0"
+    (click)="onProfilePictureClick()"
+    (keydown)="onProfilePictureKeydown($event)"
+    aria-label="View Stories"
   />
   
   <section class="profile-info">

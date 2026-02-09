@@ -2,42 +2,126 @@
 
 .highlights-section {
   width: 100%;
-  padding: 16px 0;
+  min-height: 110px;
+  padding: 16px 0 24px;
   border-bottom: 1px solid #dbdbdb;
+  display: block;
 }
 
-.highlights-container {
+// Carousel wrapper with arrows
+.highlights-carousel {
+  position: relative;
   display: flex;
-  gap: 16px;
+  justify-content: center;
+  margin: 24px 0 12px;
+}
+
+// Scrollable track
+.highlights-track {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 0 16px;
+  padding: 8px 48px; // Room for overlay arrows
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+
+  // Hide scrollbar but keep functionality
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// Carousel arrows (Instagram-like overlay)
+.carousel-arrow {
+  position: absolute;
+  top: 42px; // Aligns with center of highlight circle
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(0, 0, 0, 0.35); // IG-like semi-transparent
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  z-index: 2;
+  transition: background 150ms ease;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  &.left {
+    left: 10px;
+  }
+
+  &.right {
+    right: 10px;
+  }
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  &:active {
+    transform: translateY(-50%) scale(0.95);
+  }
+
+  // Hide arrows on small screens (let touch/trackpad scroll)
+  @media (max-width: 768px) {
+    display: none;
+  }
+}
+
+// Mobile: adjust track padding when arrows are hidden
+@media (max-width: 768px) {
+  .highlights-track {
+    padding: 8px 8px;
+  }
+}
+
+// Legacy container class (keep for backwards compat with loading/error states)
+.highlights-container {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
 
   // Hide scrollbar but keep functionality
-  scrollbar-width: none; // Firefox
-  -ms-overflow-style: none; // IE/Edge
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 
   &::-webkit-scrollbar {
-    display: none; // Chrome/Safari
-  }
-
-  // On larger screens, allow wrapping
-  @media (min-width: 768px) {
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    display: none;
   }
 }
 
 .highlight-item {
+  width: 92px;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: 4px;
+  scroll-snap-align: start;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: opacity 150ms ease;
+  text-align: center;
 
   &:hover {
     opacity: 0.7;
@@ -49,49 +133,68 @@
 }
 
 .highlight-circle {
-  width: 64px;
-  height: 64px;
+  width: 77px;
+  height: 77px;
   border-radius: 50%;
-  border: 2px solid #dbdbdb;
   overflow: hidden;
-  background: #fafafa;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   position: relative;
+  padding: 2px;
 
   // Gradient border effect (Instagram-like)
-  background: linear-gradient(white, white) padding-box,
-              linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) border-box;
-  border: 2px solid transparent;
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  
+  // Inner white background for content
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: 50%;
+    background: white;
+    z-index: 0;
+  }
 }
 
 .highlight-image {
-  width: 100%;
-  height: 100%;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
   object-fit: cover;
   display: block;
+  border-radius: 50%;
+  position: relative;
+  z-index: 1;
 }
 
 .highlight-placeholder {
-  width: 100%;
-  height: 100%;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
   display: flex;
   align-items: center;
   justify-content: center;
   background: #fafafa;
+  border-radius: 50%;
+  position: relative;
+  z-index: 1;
+
+  svg {
+    width: 60%;
+    height: 60%;
+  }
 }
 
 .highlight-title {
-  max-width: 80px;
+  max-width: 77px;
   font-size: 12px;
-  line-height: 14px;
+  line-height: 1.2;
   color: #262626;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 400;
 }
 
 // Loading skeleton
