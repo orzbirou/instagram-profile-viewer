@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-config(); // Load .env file
+config({ path: '.env' }); // Load .env file if it exists (local dev only)
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
