@@ -1,4 +1,4 @@
 export const environment = {
   production: false,
-  apiBaseUrl: 'http://localhost:3000',
+  apiBaseUrl: 'https://instagram-profile-viewer-stlk.onrender.com',
 };
