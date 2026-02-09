@@ -1,5 +1,5 @@
 import { Component, input, output, signal, effect, HostListener, ElementRef, ChangeDetectionStrategy } from '@angular/core';
-import type { SearchUserResult } from '../../../../services/search-api.service';
+import type { SearchUserResult } from '../../../services/search-api.service';
 
 @Component({
   selector: 'app-search-results-dropdown',
@@ -32,7 +32,7 @@ export class SearchResultsDropdownComponent {
   @HostListener('document:pointerdown', ['$event'])
   handleClickOutside(event: PointerEvent): void {
     if (!this.isOpen()) return;
-    
+
     const clickedInside = this.elementRef.nativeElement.contains(event.target);
     if (!clickedInside) {
       this.close.emit();
@@ -83,7 +83,7 @@ export class SearchResultsDropdownComponent {
 
   private scrollActiveItemIntoView(index: number): void {
     if (index < 0) return;
-    
+
     setTimeout(() => {
       const activeElement = this.elementRef.nativeElement.querySelector(
         `[data-index="${index}"]`

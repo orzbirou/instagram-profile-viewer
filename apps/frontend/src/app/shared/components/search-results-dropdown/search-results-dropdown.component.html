@@ -1,0 +1,62 @@
+<div class="dropdown" [class.open]="isOpen()">
+  @if (isLoading()) {
+    <div class="loading">
+      @for (item of [1,2,3]; track item) {
+        <div class="result-item skeleton">
+          <div class="avatar skeleton-avatar"></div>
+          <div class="info">
+            <div class="skeleton-text username"></div>
+            <div class="skeleton-text fullname"></div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (error()) {
+    <div class="error">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+      </svg>
+      <p>{{ error() }}</p>
+    </div>
+  } @else if (results().length === 0) {
+    <div class="empty">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+      </svg>
+      <p>No results found</p>
+    </div>
+  } @else {
+    <div class="results">
+      @for (result of results(); track trackByUsername($index, result); let i = $index) {
+        <button 
+          class="result-item"
+          [class.active]="isActive(i)"
+          [attr.data-index]="i"
+          (click)="onSelect(result.username)"
+          type="button">
+          <div class="avatar">
+            <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="22" cy="22" r="22" fill="#DBDBDB"/>
+              <circle cx="22" cy="17" r="8" fill="#FFFFFF"/>
+              <path d="M8 36C8 28 13 24 22 24C31 24 36 28 36 36" fill="#FFFFFF"/>
+            </svg>
+          </div>
+          <div class="info">
+            <div class="username">
+              <span class="username-text">{{ result.username }}</span>
+              @if (result.isVerified) {
+                <svg class="verified-badge" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+                  <path d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z" fill="currentColor"></path>
+                </svg>
+              }
+            </div>
+            <div class="fullname">{{ result.fullName }}</div>
+            @if (result.followersCount) {
+              <div class="followers">{{ formatFollowers(result.followersCount) }} followers</div>
+            }
+          </div>
+        </button>
+      }
+    </div>
+  }
+</div>

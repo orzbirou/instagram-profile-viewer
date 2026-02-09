@@ -10,8 +10,8 @@ import { SearchApiService, SearchUserResult, SearchResponse } from '../../servic
 import type { ApiError } from '../../services/api-error';
 import { ProfileHeaderComponent } from './components/profile-header/profile-header.component';
 import { ProfileHighlightsComponent } from './components/profile-highlights/profile-highlights.component';
-import { SearchInputComponent } from '../home/components/search-input/search-input.component';
-import { SearchResultsDropdownComponent } from '../home/components/search-results-dropdown/search-results-dropdown.component';
+import { SearchInputComponent } from '../../shared/components/search-input/search-input.component';
+import { SearchResultsDropdownComponent } from '../../shared/components/search-results-dropdown/search-results-dropdown.component';
 
 type ProfileTab = 'posts' | 'reels' | 'tagged' | 'reposts';
 

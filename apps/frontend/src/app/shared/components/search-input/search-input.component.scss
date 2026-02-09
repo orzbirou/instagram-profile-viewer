@@ -2,6 +2,7 @@
 
 input {
   width: 100%;
+  max-width: 268px;
   padding: 10px 16px;
   font-size: 14px;
   line-height: 18px;
@@ -12,17 +13,17 @@ input {
   outline: none;
   transition: border-color 0.2s ease, background-color 0.2s ease;
   box-sizing: border-box;
-  
+
   &::placeholder {
     color: #8e8e8e;
   }
-  
+
   // Focus state
   &:focus {
     background-color: #ffffff;
     border-color: #a8a8a8;
   }
-  
+
   // Hover state (when not focused)
   &:hover:not(:focus) {
     border-color: #c7c7c7;

@@ -1,5 +1,65 @@
+// Search header at top of profile page
+.search-header {
+  background: white;
+  border-bottom: 1px solid #dbdbdb;
+  padding: 12px 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.search-container {
+  max-width: 975px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.search-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 268px;
+}
+
+// Idle state (no profile loaded yet)
+.idle-state {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.idle-content {
+  text-align: center;
+  max-width: 500px;
+}
+
+.idle-title {
+  font-size: 32px;
+  font-weight: 300;
+  color: #262626;
+  margin: 0 0 12px 0;
+}
+
+.idle-subtitle {
+  font-size: 16px;
+  color: #8e8e8e;
+  margin: 0;
+}
+
+// Profile page layout
+.page {
+  background: white;
+}
+
+.profile-top-shell {
+  background: white;
+}
+
 .profile-container {
-  max-width: 935px;
+  max-width: 975px;
   margin: 0 auto;
   padding: 30px 20px;
 
@@ -131,6 +191,106 @@
         line-height: 1;
       }
     }
+  }
+}
+
+// Instagram-style tabs (icon-only with underline)
+.ig-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 60px;
+  border-top: 1px solid #dbdbdb;
+  margin-top: 44px;
+}
+
+.ig-tab {
+  padding: 16px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+  
+  svg {
+    width: 24px;
+    height: 24px;
+    color: #8e8e8e;
+    transition: color 0.15s ease;
+  }
+  
+  &:hover:not(.is-active) svg {
+    color: #262626;
+  }
+  
+  &.is-active {
+    svg {
+      color: #262626;
+    }
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #262626;
+    }
+  }
+}
+
+.grid-shell {
+  max-width: 975px;
+  margin: 0 auto;
+  padding: 0 20px 30px;
+}
+
+// Posts grid styling
+.posts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-top: 20px;
+  width: 100%;
+}
+
+// 5 columns on larger screens
+@media (min-width: 768px) {
+  .posts-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+// Mobile - 3 columns
+@media (max-width: 735px) {
+  .posts-grid {
+    gap: 3px;
+  }
+}
+
+// Small mobile - 2 columns
+@media (max-width: 480px) {
+  .posts-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3px;
+  }
+}
+
+.post-item {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  cursor: pointer;
+  background: #fafafa;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 }
 
